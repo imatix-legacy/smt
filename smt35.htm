@@ -1,0 +1,60 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>method_destroy</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt34.htm">&lt;</A>
+ | <A href="smt36.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="method_destroy">&nbsp;</A>
+<H3><A NAME="TOC81"><TT>method_destroy</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+method_destroy (
+    METHOD *method                      /*  Method to destroy                */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Destroys the method. Returns 0 when completed. In case of
+   error, returns -1 and sets smt_errno to one of these values:
+   <TABLE BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT NOTREADY</B>
+   <TD ALIGN="LEFT">smt_init() was not called, or failed </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+#if (defined (SMT_TRACE))
+    trace ("method_destroy: method=%s", method-&gt; name);
+#endif
+    ASSERT (method);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (-1);
+      }
+
+    /*  We have to be a little careful or sym_delete_symbol () will          */
+    /*  try to release the symbol's data area; the data area points          */
+    /*  to our node, which we want to release ourselves.                     */
+    method-&gt; symbol-&gt; data = NULL;
+    sym_delete_symbol (dict, method-&gt; symbol);
+
+    /*  Delete the method                                                    */
+    mem_strfree (&amp;method-&gt; name);
+    node_destroy (method);
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt34.htm">&lt;</A>
+ | <A href="smt36.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,186 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The Unattended Process Monitor (UPM) Tool</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt15.htm">&lt;</A>
+ | <A href="smt17.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC53">The Unattended Process Monitor (UPM) Tool</A></H2>
+
+<H3><A NAME="TOC54">Overview</A></H3>
+
+<P>The UPM tool is a small application developed with SMT, and
+included as an example.  The UPM tool was developed on UNIX and may
+not be very useful on other systems.
+
+<P>The UPM tool allows you to manage 'unattended' processes, which
+may handle input/output on some devices, typically terminals.  The
+UPM tool lets you start and stop such processes, manually or using
+a timer.
+
+<H3><A NAME="TOC55">Technical Details</A></H3>
+
+<P>The UPM tool consists of four programs:
+<OL>
+<LI><TT>upmd</TT> is a server program that runs permanently.
+<LI><TT>upmc</TT> is a client program that provides a command-level
+interface.
+<LI><TT>smtupmd</TT> is an agent that handles the UPM server
+protocol.  The <TT>upmd</TT> program is basically a wrapper around
+this agent.
+<LI><TT>smtupmc</TT> is an agent that handles the UPM client
+protocol.  The <TT>upmc</TT> program is basically a wrapper around
+this agent.
+</OL>
+
+<P>The main UPM configuration file is called "upm.ini".  This is
+a typical "upm.ini" file:
+</PRE>[Setup]
+    logfile=upmd.log
+[Tasks]
+    name=task1
+    name=task2
+</PRE>
+
+<P>The [Tasks] section defines each of the UPM tasks.  Each task
+has a config file to define task-specific values. The config file
+for "task1" is called "TASK1.ini". For example:
+<PRE>#   Configuration for Task 1
+[Setup]
+    stdin=/dev/pts/1
+    stdout=/dev/pts/1
+    stderr=/dev/pts/1
+[Environment]
+    DATABASE=test
+    PRINTER=tcp://localhost:1000
+[Run]
+    idle=banner IDLE
+    startup=run BBORNE.gnt
+    cancel=cleanup
+</PRE>
+
+<P>The [Setup] section defines the input/output devices for the
+task.  The [Environment] section defines a list of variables for
+the task.  The [Run] section defines the idle command and the
+startup command.  These commands must be executable files (scripts
+or programs) with optional arguments.  Redirection or multiple
+commands are not permitted.
+
+<P>Each task also has an optional TIMES file.  The times file for
+task1 is called "TASK1.tim", and looks something like this:
+<PRE>#  This file specifies the times for Task1
+
+mon 8-12 12:30-20
+tue 8-12 12:30-20
+wed 8-12 12:30-20
+thu 8-12 13:05-13:06  13:08:13-10
+fri 8-12 12:30-20
+12/25 off
+1/1 off
+</PRE>
+
+<P>Each line (except blank lines and comments) defines some times
+for a day.  The first word on the line is the <EM>day</EM>, the
+remaining words are one or more time <EM>specifications</EM>.  A
+day can be:
+<UL>
+<LI>A day name, Mon-Sun.
+<LI>A date, MM/DD or YY/MM/DD or YYYY/MM/DD.  If you use YY/MM/DD,
+the century is assumed to be 20 for years higher than 50.
+</UL>
+A time specification can be:
+<UL>
+<LI>'off', meaning clear all times for that day.
+<LI>hh:mm-hh:mm, meaning activate for that time range, inclusive.
+</UL>
+
+<P>If no TIMES file is provided, you can (or rather, must) start
+and stop the tasks manually.
+
+<H3><A NAME="TOC56">Using The UPM Tool</A></H3>
+
+<OL>
+<LI>Define the upm.ini and task .ini files correctly.  Make sure
+that the devices exist and are writable.
+<LI>For testing, run the <TT>upmd</TT> program in a shell window.
+For real life use, place into the system startup procedure
+(<TT>inittab</TT> on a UNIX system).  You can run <TT>upmd</TT> in
+the background like this (assuming a UNIX system):
+
+<PRE>nohup upmd&
+</PRE>
+
+<P>Run the command <TT>upmc</TT> to start the BORMAN client.  The
+<TT>upmc<TT> program acts as a 'front-end' for the upmd daemon.
+Since the daemon runs as a process in the background, it cannot
+read commands from the keyboard itself.
+
+<P>When you run <TT>upmc<TT> you get a message like this:
+<PRE>upmc> 100- Connecting to UPM daemon...
+upmc> 102- Connected to UPM daemon version 1.0
+upmc></PRE>
+
+<P>You can give various commands at the prompt.  This is what the
+'help' command shows:
+<PRE>upmc> help
+Commands and arguments can be in any case.  Commands are:
+LIST                 - list all known tasks
+START [task | ALL]   - start specified task (default all)
+STOP [task | ALL]    - stop specified task (default all)
+STATUS [task | ALL]  - show status for specified task (default all)
+HALT                 - halt UPM daemon
+EXIT                 - end this UPM client session
+QUIT                 - end this UPM client session
+HELP                 - show this information
+VERSION              - show UPM client version
+</PRE>
+
+<P>If you run <TT>upmc<TT> when the <TT>upmd<TT> daemon is not
+running, you get this:
+<PRE>upmc> 100- Connecting to UPM daemon...
+upmc> 301- UPD daemon connection failed: Connection refused
+</PRE>
+
+<P>You can also run <TT>upmc<TT> to execute a command directly:
+<PRE>$ upmc start all
+</PRE>
+Which is the same as typing this:
+<PRE>$ upmc start
+</PRE>
+
+<H3><A NAME="TOC57">UPM Trouble Shooting</A></H3>
+
+<P>These are some possible errors:
+<UL>
+<LI>The device you specified in the task .ini file is not
+accessible to the upm daemon.  You will get an error message in the
+daemon log file, or in the shell window where you ran
+<TT>upmd</TT>.
+<LI>The commands you specified in the task .ini file are not found
+or not accessible.  You will get an error message in the daemon log
+file, or in the shell window where you ran <TT>upmd<TT>.
+</UL>
+
+<H4>UPM Implementation</H4>
+
+<P>The <A HREF="smtupmd.htm">hypertext view</A> of SMTUPMD's dialog
+and source code may help to understand how SMTUPMD works.
+
+<P>The <A HREF="smtupmc.htm">hypertext view</A> of SMTUPMC's dialog
+and source code may help to understand how SMTUPMC works.
+
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt15.htm">&lt;</A>
+ | <A href="smt17.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

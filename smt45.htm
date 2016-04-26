@@ -1,0 +1,63 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>event_discard</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt44.htm">&lt;</A>
+ | <A href="smt46.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="event_discard">&nbsp;</A>
+<H3><A NAME="TOC91"><TT>event_discard</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+event_discard (
+    QUEUE *queue,                       /*  Queue to take event from         */
+    EVENT *event                        /*  Event, or null                   */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Discards the specified event in the specified queue. The
+   <A href="smt46.htm#event_iterate">event iterate</A> (), <A href="smt42.htm#event_accept">event accept</A> () and <A href="smt45.htm#event_discard">event discard</A>
+   () calls let a thread manipulate its event queue directly. In
+   such cases the thread takes responsibility for event delivery
+   and acknowledgement. Returns 0 when successfully completed. In
+   case of error, returns -1 and sets smt_errno to one of these
+   values: <TABLE BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT
+   NOTREADY</B>  <TD ALIGN="LEFT">smt_init() was not called, or
+   failed <TR><TD ALIGN="LEFT"><B>SMT QUEUEISEMPTY</B>  <TD
+   ALIGN="LEFT">The queue was empty </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+#if (defined (SMT_TRACE))
+    trace ("event_discard");
+#endif
+    ASSERT (queue);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (-1);
+      }
+
+    if ((event = event_locate (queue, event)) == NULL)
+        return (-1);
+
+    queue-&gt; cur_events--;               /*  Count the event                  */
+    <A href="smt47.htm#event_destroy">event destroy</A> (event);              /*  Unlink and destroy event         */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt44.htm">&lt;</A>
+ | <A href="smt46.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

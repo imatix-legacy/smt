@@ -1,0 +1,210 @@
+<HTML>
+<BODY BACKGROUND="newstone.gif">
+<H1>smtupmd.l</H1>
+<HR>
+<PRE>
+!----------------------------------------------------------------------------
+!   Name:       smtupmd.l
+!   Title:      Dialog for SMT Unattended Task Manager daemon
+!   Package:    Libero SMT 2.x
+!
+!   Written:    1996/09/05  iMatix SMT kernel team <A HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+!   Revised:    1997/09/08
+!
+!   Copyright:  Copyright (c) 1991-2000 iMatix Corporation
+!   This program is free software; you can redistribute it and/or modify it
+!   under the terms of the GNU General Public License as published by the Free
+!   Software Foundation; either version 2 of the License, or (at your option)
+!   any later version. This program is distributed in the hope that it will be
+!   useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+!   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General
+!   Public License for more details.  You should have received a copy of the
+!   GNU General Public License along with this program; if not, write to the
+!   Free Software Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+!----------------------------------------------------------------------------
+-schema=smtschm.c
+
+<A NAME="afterinit">After-Init</A>:    !   Master thread manages connection requests on UPM master socket
+
+    (--) Master                             -&gt; <A HREF="#masterinput">Master-Input</A>
+          + <A HREF="smtupmds.htm#createtaskthreads" TARGET="source">Create-Task-Threads</A>
+          + <A HREF="smtupmds.htm#openmanagerlogfile" TARGET="source">Open-Manager-Log-File</A>
+          + <A HREF="smtupmds.htm#openmastersocket" TARGET="source">Open-Master-Socket</A>
+          + <A HREF="smtupmds.htm#waitforsocketinput" TARGET="source">Wait-For-Socket-Input</A>
+    !   Control threads handle front-end control socket connections
+    (--) Control                            -&gt; <A HREF="#havecontrolmessage">Have-Control-Message</A>
+          + <A HREF="smtupmds.htm#replyreadyforcommand" TARGET="source">Reply-Ready-For-Command</A>
+          + <A HREF="smtupmds.htm#readcontrolmessage" TARGET="source">Read-Control-Message</A>
+          + <A HREF="smtupmds.htm#checkcontrolmessage" TARGET="source">Check-Control-Message</A>
+    !   Task threads each handle one defined UPM task
+    (--) Task                               -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          + <A HREF="smtupmds.htm#loadtasktimeslots" TARGET="source">Load-Task-Time-Slots</A>
+          + <A HREF="smtupmds.htm#loadtaskvalues" TARGET="source">Load-Task-Values</A>
+          + <A HREF="smtupmds.htm#runtaskidlecommand" TARGET="source">Run-Task-Idle-Command</A>
+!  These states control the master thread, which waits for control
+!  connections.
+
+<A NAME="masterinput">Master-Input</A>:
+    (--) Ok                                 -&gt; <A HREF="#masterinput">Master-Input</A>
+          + <A HREF="smtupmds.htm#acceptcontrolconnection" TARGET="source">Accept-Control-Connection</A>
+          + <A HREF="smtupmds.htm#waitforsocketinput" TARGET="source">Wait-For-Socket-Input</A>
+!  These states define the control threads, one for each client
+!  connection.
+
+<A NAME="havecontrolmessage">Have-Control-Message</A>:
+    (--) List                               -&gt; <A HREF="#havecontrolmessage">Have-Control-Message</A>
+          + <A HREF="smtupmds.htm#replylistoftasks" TARGET="source">Reply-List-Of-Tasks</A>
+          + <A HREF="smtupmds.htm#replyreadyforcommand" TARGET="source">Reply-Ready-For-Command</A>
+          + <A HREF="smtupmds.htm#readcontrolmessage" TARGET="source">Read-Control-Message</A>
+          + <A HREF="smtupmds.htm#checkcontrolmessage" TARGET="source">Check-Control-Message</A>
+    (--) Halt                               -&gt;
+          + <A HREF="smtupmds.htm#replyhalting" TARGET="source">Reply-Halting</A>
+          + <A HREF="smtupmds.htm#commitoutgoingreplies" TARGET="source">Commit-Outgoing-Replies</A>
+          + <A HREF="smtupmds.htm#shutdowntheapplication" TARGET="source">Shutdown-The-Application</A>
+          + <A HREF="smtupmds.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Start                              -&gt; <A HREF="#havetaskforstart">Have-Task-For-Start</A>
+          + <A HREF="smtupmds.htm#getfirstaffectedtask" TARGET="source">Get-First-Affected-Task</A>
+    (--) Stop                               -&gt; <A HREF="#havetaskforstop">Have-Task-For-Stop</A>
+          + <A HREF="smtupmds.htm#getfirstaffectedtask" TARGET="source">Get-First-Affected-Task</A>
+    (--) Status                             -&gt; <A HREF="#havetaskforstatus">Have-Task-For-Status</A>
+          + <A HREF="smtupmds.htm#getfirstaffectedtask" TARGET="source">Get-First-Affected-Task</A>
+    (--) Error                              -&gt; <A HREF="#havecontrolmessage">Have-Control-Message</A>
+          + <A HREF="smtupmds.htm#replyunrecognisedcontrol" TARGET="source">Reply-Unrecognised-Control</A>
+          + <A HREF="smtupmds.htm#replyreadyforcommand" TARGET="source">Reply-Ready-For-Command</A>
+          + <A HREF="smtupmds.htm#readcontrolmessage" TARGET="source">Read-Control-Message</A>
+          + <A HREF="smtupmds.htm#checkcontrolmessage" TARGET="source">Check-Control-Message</A>
+
+<A NAME="havetaskforstart">Have-Task-For-Start</A>:
+    (--) Ok                                 -&gt; <A HREF="#waittaskstarted">Wait-Task-Started</A>
+          + <A HREF="smtupmds.htm#passstarttotaskthread" TARGET="source">Pass-Start-To-Task-Thread</A>
+    (--) No-More                            -&gt; <A HREF="#havecontrolmessage">Have-Control-Message</A>
+          + <A HREF="smtupmds.htm#replyreadyforcommand" TARGET="source">Reply-Ready-For-Command</A>
+          + <A HREF="smtupmds.htm#readcontrolmessage" TARGET="source">Read-Control-Message</A>
+          + <A HREF="smtupmds.htm#checkcontrolmessage" TARGET="source">Check-Control-Message</A>
+    (--) Not-Found                          -&gt; <A HREF="#havecontrolmessage">Have-Control-Message</A>
+          + <A HREF="smtupmds.htm#replyreadyforcommand" TARGET="source">Reply-Ready-For-Command</A>
+          + <A HREF="smtupmds.htm#readcontrolmessage" TARGET="source">Read-Control-Message</A>
+          + <A HREF="smtupmds.htm#checkcontrolmessage" TARGET="source">Check-Control-Message</A>
+
+<A NAME="waittaskstarted">Wait-Task-Started</A>:
+    (--) Ok                                 -&gt; <A HREF="#havetaskforstart">Have-Task-For-Start</A>
+          + <A HREF="smtupmds.htm#replytaskstartedok" TARGET="source">Reply-Task-Started-Ok</A>
+          + <A HREF="smtupmds.htm#getnextaffectedtask" TARGET="source">Get-Next-Affected-Task</A>
+    (--) Error                              -&gt; <A HREF="#havetaskforstart">Have-Task-For-Start</A>
+          + <A HREF="smtupmds.htm#replytaskstartederror" TARGET="source">Reply-Task-Started-Error</A>
+          + <A HREF="smtupmds.htm#getnextaffectedtask" TARGET="source">Get-Next-Affected-Task</A>
+
+<A NAME="havetaskforstop">Have-Task-For-Stop</A>: &lt;<A NAME="havetaskforstart"><Have-Task-For-Start></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#waittaskstopped">Wait-Task-Stopped</A>
+          + <A HREF="smtupmds.htm#passstoptotaskthread" TARGET="source">Pass-Stop-To-Task-Thread</A>
+
+<A NAME="waittaskstopped">Wait-Task-Stopped</A>:
+    (--) Ok                                 -&gt; <A HREF="#havetaskforstop">Have-Task-For-Stop</A>
+          + <A HREF="smtupmds.htm#replytaskstoppedok" TARGET="source">Reply-Task-Stopped-Ok</A>
+          + <A HREF="smtupmds.htm#getnextaffectedtask" TARGET="source">Get-Next-Affected-Task</A>
+    (--) Error                              -&gt; <A HREF="#havetaskforstop">Have-Task-For-Stop</A>
+          + <A HREF="smtupmds.htm#replytaskstoppederror" TARGET="source">Reply-Task-Stopped-Error</A>
+          + <A HREF="smtupmds.htm#getnextaffectedtask" TARGET="source">Get-Next-Affected-Task</A>
+
+<A NAME="havetaskforstatus">Have-Task-For-Status</A>: &lt;<A NAME="havetaskforstart"><Have-Task-For-Start></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#waittaskstatus">Wait-Task-Status</A>
+          + <A HREF="smtupmds.htm#passstatustotaskthread" TARGET="source">Pass-Status-To-Task-Thread</A>
+
+<A NAME="waittaskstatus">Wait-Task-Status</A>:
+    (--) Running                            -&gt; <A HREF="#havetaskforstatus">Have-Task-For-Status</A>
+          + <A HREF="smtupmds.htm#replytaskrunning" TARGET="source">Reply-Task-Running</A>
+          + <A HREF="smtupmds.htm#getnextaffectedtask" TARGET="source">Get-Next-Affected-Task</A>
+    (--) Stopped                            -&gt; <A HREF="#havetaskforstatus">Have-Task-For-Status</A>
+          + <A HREF="smtupmds.htm#replytaskstopped" TARGET="source">Reply-Task-Stopped</A>
+          + <A HREF="smtupmds.htm#getnextaffectedtask" TARGET="source">Get-Next-Affected-Task</A>
+    (--) Error                              -&gt; <A HREF="#havetaskforstatus">Have-Task-For-Status</A>
+          + <A HREF="smtupmds.htm#getnextaffectedtask" TARGET="source">Get-Next-Affected-Task</A>
+!  These states define the task threads, one for each task defined
+!  in the UPM initialisation file.
+
+<A NAME="taskstopped">Task-Stopped</A>:
+    (--) Start                              -&gt; <A HREF="#taskrunning">Task-Running</A>
+          + <A HREF="smtupmds.htm#loadtasktimeslots" TARGET="source">Load-Task-Time-Slots</A>
+          + <A HREF="smtupmds.htm#loadtaskvalues" TARGET="source">Load-Task-Values</A>
+          + <A HREF="smtupmds.htm#runtaskstartupcommand" TARGET="source">Run-Task-Startup-Command</A>
+          + <A HREF="smtupmds.htm#monitoractivetaskstatus" TARGET="source">Monitor-Active-Task-Status</A>
+          + <A HREF="smtupmds.htm#signaltaskstartedokay" TARGET="source">Signal-Task-Started-Okay</A>
+    (--) Stop                               -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          + <A HREF="smtupmds.htm#signaltasknotrunning" TARGET="source">Signal-Task-Not-Running</A>
+    (--) Start-Auto                         -&gt; <A HREF="#taskrunning">Task-Running</A>
+          + <A HREF="smtupmds.htm#loadtaskvalues" TARGET="source">Load-Task-Values</A>
+          + <A HREF="smtupmds.htm#runtaskstartupcommand" TARGET="source">Run-Task-Startup-Command</A>
+          + <A HREF="smtupmds.htm#monitoractivetaskstatus" TARGET="source">Monitor-Active-Task-Status</A>
+    (--) Stop-Auto                          -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          +
+    (--) Status                             -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          + <A HREF="smtupmds.htm#signaltaskstopped" TARGET="source">Signal-Task-Stopped</A>
+    (--) Task-Alarm                         -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          +
+    (--) Exception                          -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          + <A HREF="smtupmds.htm#signaltaskstartederror" TARGET="source">Signal-Task-Started-Error</A>
+
+<A NAME="taskrunning">Task-Running</A>:
+    (--) Start                              -&gt; <A HREF="#taskrunning">Task-Running</A>
+          + <A HREF="smtupmds.htm#shutdownchildtask" TARGET="source">Shut-Down-Child-Task</A>
+          + <A HREF="smtupmds.htm#runtaskcancelcommand" TARGET="source">Run-Task-Cancel-Command</A>
+          + <A HREF="smtupmds.htm#loadtasktimeslots" TARGET="source">Load-Task-Time-Slots</A>
+          + <A HREF="smtupmds.htm#loadtaskvalues" TARGET="source">Load-Task-Values</A>
+          + <A HREF="smtupmds.htm#runtaskstartupcommand" TARGET="source">Run-Task-Startup-Command</A>
+          + <A HREF="smtupmds.htm#signaltaskstartedokay" TARGET="source">Signal-Task-Started-Okay</A>
+    (--) Stop                               -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          + <A HREF="smtupmds.htm#shutdownchildtask" TARGET="source">Shut-Down-Child-Task</A>
+          + <A HREF="smtupmds.htm#runtaskcancelcommand" TARGET="source">Run-Task-Cancel-Command</A>
+          + <A HREF="smtupmds.htm#runtaskidlecommand" TARGET="source">Run-Task-Idle-Command</A>
+          + <A HREF="smtupmds.htm#signaltaskstoppedokay" TARGET="source">Signal-Task-Stopped-Okay</A>
+    (--) Start-Auto                         -&gt; <A HREF="#taskrunning">Task-Running</A>
+          +
+    (--) Stop-Auto                          -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          + <A HREF="smtupmds.htm#shutdownchildtask" TARGET="source">Shut-Down-Child-Task</A>
+          + <A HREF="smtupmds.htm#runtaskcancelcommand" TARGET="source">Run-Task-Cancel-Command</A>
+          + <A HREF="smtupmds.htm#runtaskidlecommand" TARGET="source">Run-Task-Idle-Command</A>
+    (--) Status                             -&gt; <A HREF="#taskrunning">Task-Running</A>
+          + <A HREF="smtupmds.htm#signaltaskrunning" TARGET="source">Signal-Task-Running</A>
+    (--) Task-Alarm                         -&gt; <A HREF="#taskrunning">Task-Running</A>
+          + <A HREF="smtupmds.htm#checktaskstillrunning" TARGET="source">Check-Task-Still-Running</A>
+          + <A HREF="smtupmds.htm#monitoractivetaskstatus" TARGET="source">Monitor-Active-Task-Status</A>
+    (--) Task-Stopped                       -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          + <A HREF="smtupmds.htm#runtaskidlecommand" TARGET="source">Run-Task-Idle-Command</A>
+    (--) Exception                          -&gt; <A HREF="#taskstopped">Task-Stopped</A>
+          + <A HREF="smtupmds.htm#signaltaskstartederror" TARGET="source">Signal-Task-Started-Error</A>
+    !  Shutdown handling for an active task is a special case
+    (--) Shutdown                           -&gt;
+          + <A HREF="smtupmds.htm#shutdownchildtask" TARGET="source">Shut-Down-Child-Task</A>
+          + <A HREF="smtupmds.htm#runtaskcancelcommand" TARGET="source">Run-Task-Cancel-Command</A>
+          + <A HREF="smtupmds.htm#runtaskidlecommand" TARGET="source">Run-Task-Idle-Command</A>
+          + <A HREF="smtupmds.htm#destroythetask" TARGET="source">Destroy-The-Task</A>
+          + <A HREF="smtupmds.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="defaults">Defaults</A>:
+    (--) Sock-Error                         -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smtupmds.htm#signalsocketerror" TARGET="source">Signal-Socket-Error</A>
+          + <A HREF="smtupmds.htm#checkthreadtype" TARGET="source">Check-Thread-Type</A>
+    (--) Sock-Closed                        -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smtupmds.htm#checkthreadtype" TARGET="source">Check-Thread-Type</A>
+    (--) Exception                          -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smtupmds.htm#checkthreadtype" TARGET="source">Check-Thread-Type</A>
+    (--) Shutdown                           -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smtupmds.htm#checkthreadtype" TARGET="source">Check-Thread-Type</A>
+    (--) Fatal                              -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smtupmds.htm#checkthreadtype" TARGET="source">Check-Thread-Type</A>
+
+<A NAME="endthread">End-Thread</A>:
+    (--) Master                             -&gt;
+          + <A HREF="smtupmds.htm#closemanagerlogfile" TARGET="source">Close-Manager-Log-File</A>
+          + <A HREF="smtupmds.htm#shutdowntheapplication" TARGET="source">Shutdown-The-Application</A>
+          + <A HREF="smtupmds.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Control                            -&gt;
+          + <A HREF="smtupmds.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Task                               -&gt;
+          + <A HREF="smtupmds.htm#destroythetask" TARGET="source">Destroy-The-Task</A>
+          + <A HREF="smtupmds.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+</PRE>
+<HR>
+<P>Generated by <A HREF="http://www.imatix.com">
+Framer 1.0 &#169; 1997 iMatix</A></P>
+</BODY></HTML>

@@ -1,0 +1,100 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>queue_deliver</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt38.htm">&lt;</A>
+ | <A href="smt40.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="queue_deliver">&nbsp;</A>
+<H3><A NAME="TOC85"><TT>queue_deliver</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+queue_deliver (
+    QUEUE  *queue,                      /*  Queue containing events          */
+    THREAD *thread)                     /*  Agent thread to receive event    */
+</PRE>
+<H4>Synopsis</H4>
+<P>Tries to deliver an event from a queue to an agent thread. The
+   event, if deliverable, is removed from the queue and stored in
+   the thread-&gt; event block. Returns 1 if an event was
+   delivered, else 0.
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Agent to receive event           */
+    EVENT   *event;                     /*  Event information block          */
+    EVENT   *deliver_event;             /*  Event to deliver                 */
+    METHOD  *method;                    /*  Method information block         */
+    int     top_priority;               /*  Highest event priority so far    */
+
+#if (defined (SMT_TRACE))
+    trace ("queue_deliver: thread=%s in %s", thread-&gt; name,
+                                             thread-&gt; queue-&gt; agent-&gt; name);
+#endif
+    /*  Get event to deliver - find event with highest method priority       */
+    top_priority  = -1;
+    deliver_event = NULL;
+    agent = thread-&gt; queue-&gt; agent;
+    event = queue-&gt; events.next;
+    while ((NODE *) event != &amp;queue-&gt; events)
+      {
+        if (event-&gt; priority == SMT_PRIORITY_NULL)
+          {
+            /*  Lookup method; if method is not declared, reject event      */
+            method = <A href="smt34.htm#method_lookup">method lookup</A> (agent, event-&gt; name);
+            if (method == NULL)
+              {
+                /*  Reject this event, but keep our place in the queue...   */
+                <A href="smt65.htm#sendfmt">sendfmt</A> (&amp;console, "ERROR", "Event %s not declared by %s",
+                         event-&gt; name, agent-&gt; name);
+                event = event-&gt; next;
+                <A href="smt43.htm#event_reject">event reject</A> (queue, event-&gt; prev);
+                continue;
+              }
+            else
+            /*  If null method, accept event but discard it                 */
+            if (method-&gt; event_number == SMT_NULL_EVENT)
+              {
+                event = event-&gt; next;
+                node_destroy (<A href="smt42.htm#event_accept">event accept</A> (queue, event-&gt; prev));
+                continue;
+              }
+            /*  Update the event values, to save a lookup next time         */
+            event-&gt; priority     = method-&gt; priority;
+            event-&gt; event_number = method-&gt; event_number;
+          }
+        if (event-&gt; priority &gt; top_priority)
+          {
+            top_priority  = event-&gt; priority;
+            deliver_event = event;
+          }
+        event = event-&gt; next;
+      }
+    if (deliver_event)
+      {
+        /*  Deliver event to thread                                          */
+        if (thread-&gt; event)
+            <A href="smt47.htm#event_destroy">event destroy</A> (thread-&gt; event);
+        thread-&gt; the_next_event = deliver_event-&gt; event_number;
+        thread-&gt; event = <A href="smt42.htm#event_accept">event accept</A> (queue, deliver_event);
+        return (1);                     /*  We delivered the event           */
+      }
+    else
+        return (0);                     /*  We did not find an event         */
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt38.htm">&lt;</A>
+ | <A href="smt40.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

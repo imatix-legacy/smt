@@ -1,0 +1,47 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>recycle_module</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt66.htm">&lt;</A>
+ | <A href="smt68.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="recycle_module">&nbsp;</A>
+<H3><A NAME="TOC113"><TT>recycle_module</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+void
+recycle_module (Bool wanted)
+</PRE>
+<H4>Synopsis</H4>
+<P>Tells the SMT kernel to repeat the current action module. This
+   is a simple way to re-attempt an i/o that returned a 'EAGAIN'
+   or 'EWOULDBLOCK' code. The lazy file access functions
+   automatically call this function in case they failed. If you
+   call this function with the wanted argument as FALSE, any
+   previous recycle request is cancelled.
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+#if (defined (SMT_TRACE))
+    trace ("recycle_module");
+#endif
+    if (wanted)
+        break_wanted = BREAK_RECYCLE;
+    else
+        break_wanted = BREAK_CONTINUE;
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt66.htm">&lt;</A>
+ | <A href="smt68.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

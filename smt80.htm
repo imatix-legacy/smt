@@ -1,0 +1,118 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtsock_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt79.htm">&lt;</A>
+ | <A href="smt81.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtsock_init">&nbsp;</A>
+<H3><A NAME="TOC126"><TT>smtsock_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int
+smtsock_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT socket agent. Returns 0 if initialised
+   okay, -1 if there was an error. The socket agent manages all
+   sockets (TCP and UPD) used by an SMT application. Creates an
+   unnamed thread automatically: send events to that thread.
+   Initialises the sflsock socket interface automatically.
+   Supports these public methods: <TABLE BORDER NOWRAP> <TR><TD
+   ALIGN="LEFT"><B>READ</B>  <TD ALIGN="LEFT">Read a specified
+   amount of input data (use SMT_SOCK_READ). <TR><TD
+   ALIGN="LEFT"><B>WRITE</B>  <TD ALIGN="LEFT">Write a specified
+   amount of output data (use SMT_SOCK_WRITE). <TR><TD
+   ALIGN="LEFT"><B>READR</B>  <TD ALIGN="LEFT">Read input data,
+   repeatedly (use SMT_SOCK_READ). <TR><TD
+   ALIGN="LEFT"><B>READH</B>  <TD ALIGN="LEFT">As for READ, but
+   for blocks &gt; 64k (use SMT_SOCK_READH). <TR><TD
+   ALIGN="LEFT"><B>WRITEH</B>  <TD ALIGN="LEFT">As for WRITE, but
+   for blocks &gt; 64k (use SMT_SOCK_WRITEH). <TR><TD
+   ALIGN="LEFT"><B>READRH</B>  <TD ALIGN="LEFT">As for READR, but
+   for blocks &gt; 64k (use SMT_SOCK_READH). <TR><TD
+   ALIGN="LEFT"><B>INPUT</B>  <TD ALIGN="LEFT">Wait for any input
+   ready on socket (use SMT_SOCK_INPUT). <TR><TD
+   ALIGN="LEFT"><B>INPUTR</B>  <TD ALIGN="LEFT">Wait for any
+   input, repeatedly (use SMT_SOCK_INPUT). <TR><TD
+   ALIGN="LEFT"><B>OUTPUT</B>  <TD ALIGN="LEFT">Wait for any
+   output ready on socket (use SMT_SOCK_OUTPUT). <TR><TD
+   ALIGN="LEFT"><B>CONNECT</B>  <TD ALIGN="LEFT">Make socket
+   connection to host &amp; port (use SMT_SOCK_CONNECT). <TR><TD
+   ALIGN="LEFT"><B>FLUSH</B>  <TD ALIGN="LEFT">Delete all requests
+   for specified socket (use SMT_SOCK_FLUSH). </TABLE> Sends
+   errors to the SMTOPER agent; see doc for reply events.
+<H4>Source Code - (smtsock.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle to console thread         */
+#   include "smtsock.i"                 /*  Include dialog interpreter       */
+
+    /*  We give this agent a low priority, so that it will only run after    */
+    /*  all other threads.  This is important, since it blocks on select().  */
+    agent-&gt; priority = SMT_PRIORITY_LOW;
+
+    /*                      Method name     Event value      Priority        */
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",      shutdown_event,  SMT_PRIORITY_MAX);
+
+    /*  Public methods supported by this agent                               */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "READ",          read_event,      0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "READR",         readr_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "READH",         readh_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "READRH",        readrh_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "WRITE",         write_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "WRITEH",        writeh_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "INPUT",         input_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "INPUTR",        inputr_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "OUTPUT",        output_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "CONNECT",       connect_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "FLUSH",         flush_event,     0);
+
+    /*  Private method used to cycle on select() call                        */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_TIMEOUT",      timeout_event,   0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    if (<A href="smt31.htm#agent_lookup">agent lookup</A> (SMT_OPERATOR) == NULL)
+        <A href="smt78.htm#smtoper_init">smtoper init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_OPERATOR, "")) != NULL)
+        operq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Initialise the socket interface and register sock_term()             */
+    if (sock_init () == 0)
+        <A href="smt28.htm#smt_atexit">smt atexit</A> ((function) sock_term);
+    else
+      {
+        <A href="smt65.htm#sendfmt">sendfmt</A> (&amp;operq, "ERROR",
+                 "smtsock: could not initialise socket interface");
+        <A href="smt65.htm#sendfmt">sendfmt</A> (&amp;operq, "ERROR",
+                 "smtsock: %s", connect_errlist [connect_error ()]);
+        return (-1);
+      }
+
+    ip_nonblock = TRUE;                  /*  Want nonblocking sockets        */
+
+    /*  Create initial, unnamed thread                                       */
+    <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "");
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt79.htm">&lt;</A>
+ | <A href="smt81.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,175 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The Transfer Agent - SMTTRAN</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt10.htm">&lt;</A>
+ | <A href="smt12.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="SMTTRAN">&nbsp;</A>
+<H3><A NAME="TOC48">The Transfer Agent - SMTTRAN</A></H3>
+
+<P>Transfers blocks of data or files to connected sockets.  You
+can use this agent to simplify certain types of communication.
+The transfer agent uses the socket agent for actual reading and
+writing to sockets.
+
+<P>To use SMTTRAN, call <A href="smt83.htm#smttran_init">smttran init</A>().  This creates a single
+unnamed thread automatically the first time it is called, and has
+no effect thereafter.  You can then send messages to this thread.
+It supports these methods:
+<UL>
+<LI>PUT_BLOCK - writes a length-specified block to a socket.
+<LI>GET_BLOCK - reads a length-specified block from a socket.
+<LI>PUT_FILE - writes an entire file to a socket.
+<LI>GET_FILE - reads an entire file from a socket.
+<LI>COMMIT - wait until all outstanding requests are
+complete.
+</UL>
+
+<P>Example of initialising SMTTRAN:
+
+<PRE>
+/*  Static data                                                 */
+static QID
+    tranq;                      /*  Transfer agent queue        */
+
+    /*  In agent initialisation code                            */
+    THREAD  *thread;            /*  Handle to console thread    */
+    /*  Ensure that transfer agent is running, else start it    */
+    <A href="smt83.htm#smttran_init">smttran init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_TRANSFER, "")) != NULL)
+        tranq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+</PRE>
+
+<H4>The PUT_BLOCK Method</H4>
+
+<P>Writes a length-specified block to a socket: first writes a
+two-byte length specifier in network format, then writes the block
+data.  Build the event body using exdr_write() and the message
+definition SMT_TRAN_PUTB.  The event body consists of these fields
+(see exdr_write() for the field types):
+<UL>
+<LI>[q] socket to use for output.
+<LI>[mM] block of data to write to socket.
+</UL>
+SMTTRAN replies to a PUT_BLOCK event with one of these events:
+<UL>
+<LI>TRAN_PUT_OK - the block was completely written to the socket.
+The event body contains the amount of data written.  Decode the
+event body, if you need to, using exdr_read() and the message
+definition SMT_TRAN_PUTB_OK.  The body contains these fields: [d]
+the size of the block.
+<LI>TRAN_CLOSED - the socket was closed before the block could be
+completely written.  The event body is empty.
+<LI>TRAN_ERROR - there was an error on the socket.  The event body
+contains the socket error message text.
+</UL>
+
+<H4>The GET_BLOCK Method</H4>
+
+<P>Reads a length-specified block from a socket: first reads a
+two-byte length specifier in network format, then reads that many
+bytes of block data.  Build the event body using exdr_write() and
+the message definition SMT_TRAN_GETB.  The event body consists of
+these fields (see exdr_write() for the field types):
+<UL>
+<LI>[q] socket to use for input.
+</UL>
+SMTTRAN replies to a GET_BLOCK event with one of these events:
+<UL>
+<LI>TRAN_GET_OK - the block was completely read from the socket.
+The event body contains the data block.  Decode the event body
+using exdr_read() and the message definition SMT_TRAN_GETB_OK.
+The body contains these fields: [mM] the data block.
+<LI>TRAN_CLOSED - the socket was closed before the block could be
+completely read.  The event body is empty.
+<LI>TRAN_ERROR - there was an error on the socket.  The event body
+contains the socket error message text.
+</UL>
+
+<H4>The PUT_FILE Method</H4>
+
+<P>Writes a file to a socket: reads the file in pieces of
+unspecified size, and writes these to the output socket.  Build
+the event body using exdr_write() and the message definition
+SMT_TRAN_PUTF.  The event body consists of these fields (see
+exdr_write() for the field types):
+<UL>
+<LI>[q] socket to use for output.
+<LI>[s] name of file to write to socket.
+</UL>
+SMTTRAN replies to a PUT_FILE event with one of these events:
+<UL>
+<LI>TRAN_PUT_OK - the file was completely written to the socket.
+The event body contains the amount of data written.  Decode the
+event body, if you need to, using exdr_read() and the message
+definition SMT_TRAN_PUTF_OK.  The body contains these fields: [q]
+the size of the file.
+<LI>TRAN_CLOSED - the socket was closed before the file could be
+completely written.  The event body is empty.
+<LI>TRAN_ERROR - there was an error on the socket or accessing the
+file.  The event body contains the socket or file error message
+text.
+</UL>
+
+<H4>The GET_FILE Method</H4>
+
+<P>Reads a file from a socket and saves it with the specified
+name.  Build the event body using exdr_write() and the message
+definition SMT_TRAN_GETF.  The event body consists of these fields
+(see exdr_write() for the field types):
+<UL>
+<LI>[q] socket to use for input.
+<LI>[s] name of file to create.
+</UL>
+SMTTRAN replies to a GET_FILE event with one of these events:
+<UL>
+<LI>TRAN_GET_OK - the file was completely read from the socket.
+The event body contains the amount of data written.  Decode the
+event body, if you need to, using exdr_read() and the message
+definition SMT_TRAN_GETF_OK.  The body contains these fields: [q]
+the size of the file.
+<LI>TRAN_CLOSED - the socket was closed before the file could be
+completely read.  The event body is empty.
+<LI>TRAN_ERROR - there was an error on the socket or accessing the
+file.  The event body contains the socket or file error message
+text.
+</UL>
+
+<H4>The COMMIT Method</H4>
+
+<P>Waits until all put and get requests are finished, then replies
+with a TRAN_CLOSED event.  This event does not take any arguments.
+SMTTRAN replies to a GET_FILE event with one of these events:
+<UL>
+<LI>TRAN_CLOSED - no requests remain.  The event body is
+empty.
+<LI>TRAN_ERROR - there was an error on the socket.  The event body
+contains the socket error message text.
+</UL>
+
+<H4>Example Of Use</H4>
+
+<P>The SMTHTTP agent uses the transfer agent to send files.
+
+<H4>SMTTRAN Implementation</H4>
+
+<P>The <A HREF="smttran.htm">hypertext view</A> of SMTTRAN's dialog
+and source code may help to understand how SMTTRAN works.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt10.htm">&lt;</A>
+ | <A href="smt12.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

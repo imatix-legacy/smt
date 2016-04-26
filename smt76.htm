@@ -1,0 +1,96 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtrdns_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt75.htm">&lt;</A>
+ | <A href="smt77.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtrdns_init">&nbsp;</A>
+<H3><A NAME="TOC122"><TT>smtrdns_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int smtrdns_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the reverse DNS agent. Returns 0 if initialised
+   okay, -1 if there was an error.
+<H4>Source Code - (smtrdns.c)</H4>
+<PRE>
+{
+    AGENT  *agent;                      /*  Handle for our agent             */
+    THREAD *thread;                     /*  Handle to various threads        */
+
+#   include "smtrdns.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name      Event value     Priority        */
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",       shutdown_event,
+                                             SMT_PRIORITY_MAX);
+    /*  Reply events from socket agent                                       */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_INPUT_OK",  input_ok_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_OUTPUT_OK", ok_event,           0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_READ_OK",   ok_event,           0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_WRITE_OK",  ok_event,           0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_CLOSED",    sock_closed_event,  0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_ERROR",     sock_error_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_TIMEOUT",   sock_timeout_event, 0);
+
+    /*  Public methods supported by this agent                               */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "GET_HOST_NAME",  get_host_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "GET_HOST_IP",    get_ip_event,       0);
+
+    /*  Reply events from timer agent                                        */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIME_ALARM",     timer_event, SMT_PRIORITY_LOW);
+
+    /*  Private methods used to pass initial thread events                   */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_MASTER",        master_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_CLIENT",        client_event,    0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    <A href="smt78.htm#smtoper_init">smtoper init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_OPERATOR, "")) != NULL)
+        operq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that socket i/o agent is running, else start it up            */
+    <A href="smt80.htm#smtsock_init">smtsock init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_SOCKET, "")) != NULL)
+        sockq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that timer agent is running, else start it up                 */
+    <A href="smt82.htm#smttime_init">smttime init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_TIMER, "")) != NULL)
+        timeq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Create initial thread to manage master port                          */
+    if ((thread = <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "")) != NULL)
+      {
+        SEND (&amp;thread-&gt; queue-&gt; qid, "_MASTER", "");
+        ((TCB *) thread-&gt; tcb)-&gt; thread_type = master_event;
+      }
+    else
+        return (-1);
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt75.htm">&lt;</A>
+ | <A href="smt77.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

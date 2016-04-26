@@ -1,0 +1,399 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>Using The SMT Kernel API</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt1.htm">&lt;</A>
+ | <A href="smt3.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC17">Using The SMT Kernel API</A></H2>
+
+<P>The SMT kernel API is aimed mainly at native programs.
+However, you can also use the event-passing facilities in foreign
+programs.  This can be necessary when interfacing SMT applications
+to other event-based systems.
+
+<H3><A NAME="TOC18">SMT Kernel Functions</A></H3>
+
+<P>This is the complete set of functions supported by the SMT
+kernel:
+<DL>
+<DT><A href="smt21.htm#smt_init">smt init</A>()</DT>
+<DD>Initialise the SMT kernel.</DD>
+<DT><A href="smt22.htm#smt_term">smt term</A>()</DT>
+<DD>Shut-down the SMT kernel.</DD>
+<DT><A href="smt23.htm#smt_exec_full">smt exec full</A>()</DT>
+<DD>Execute the SMT application until halted.</DD>
+<DT><A href="smt24.htm#smt_exec_step">smt exec step</A>()</DT>
+<DD>Execute just next scheduled thread.</DD>
+<DT><A href="smt25.htm#smt_active">smt active</A>()</DT>
+<DD>Check if application has halted.</DD>
+<DT><A href="smt26.htm#smt_set_console">smt set console</A>()</DT>
+<DD>Specify an agent to act as console.</DD>
+<DT><A href="smt27.htm#smt_set_timer">smt set timer</A>()</DT>
+<DD>Specify an agent to act as timer.</DD>
+<DT><A href="smt28.htm#smt_atexit">smt atexit</A>()</DT>
+<DD>Define a termination function.</DD>
+<DT><A href="smt29.htm#smt_shutdown">smt shutdown</A>()</DT>
+<DD>Halt the application prematurely.</DD>
+<DT><A href="smt30.htm#agent_declare">agent declare</A>()</DT>
+<DD>Define a new agent.</DD>
+<DT><A href="smt31.htm#agent_lookup">agent lookup</A>()</DT>
+<DD>Check if a specific agent is defined.</DD>
+<DT><A href="smt32.htm#agent_destroy">agent destroy</A>()</DT>
+<DD>Remove an agent from the SMT kernel tables.</DD>
+<DT><A href="smt33.htm#method_declare">method declare</A>()</DT>
+<DD>Define a method for an agent.</DD>
+<DT><A href="smt34.htm#method_lookup">method lookup</A>()</DT>
+<DD>Check if a specific method is defined.</DD>
+<DT><A href="smt35.htm#method_destroy">method destroy</A>()</DT>
+<DD>Remove a method from the SMT kernel tables.</DD>
+<DT><A href="smt36.htm#queue_create">queue create</A>()</DT>
+<DD>Define an event queue for an agent, or a floating queue.</DD>
+<DT><A href="smt37.htm#queue_lookup">queue lookup</A>()</DT>
+<DD>Check if an event specific queue is defined.</DD>
+<DT><A href="smt38.htm#queue_destroy">queue destroy</A>()</DT>
+<DD>Remove an event queue from the SMT kernel tables.</DD>
+<DT><A href="smt40.htm#queue_flush">queue flush</A>()</DT>
+<DD>Expire out-of-date events in the event queue.</DD>
+<DT><A href="smt41.htm#event_send">event send</A>()</DT>
+<DD>Send an event to some event queue.</DD>
+<DT><A href="smt42.htm#event_accept">event accept</A>()</DT>
+<DD>Accept the next event from an event queue.</DD>
+<DT><A href="smt43.htm#event_reject">event reject</A>()</DT>
+<DD>Reject the next event from an event queue.</DD>
+<DT><A href="smt44.htm#event_expire">event expire</A>()</DT>
+<DD>Expire the next event from an event queue.</DD>
+<DT><A href="smt45.htm#event_discard">event discard</A>()</DT>
+<DD>Discard the next event from an event queue.</DD>
+<DT><A href="smt46.htm#event_iterate">event iterate</A>()</DT>
+<DD>Find the next event in an event queue.</DD>
+<DT><A href="smt47.htm#event_destroy">event destroy</A>()</DT>
+<DD>Destroy a specific event.</DD>
+<DT><A href="smt48.htm#event_wait">event wait</A>()</DT>
+<DD>Wait explicitly for an external event.</DD>
+<DT><A href="smt49.htm#thread_create">thread create</A>()</DT>
+<DD>Define a thread for an agent, maybe create a queue.</DD>
+<DT><A href="smt50.htm#thread_lookup">thread lookup</A>()</DT>
+<DD>Check if a specific thread is defined.</DD>
+<DT><A href="smt51.htm#thread_destroy">thread destroy</A>()</DT>
+<DD>Remove a thread from the SMT kernel tables.</DD>
+<DT><A href="smt52.htm#semaph_create">semaph create</A>()</DT>
+<DD>Create a new semaphore.</DD>
+<DT><A href="smt53.htm#semaph_lookup">semaph lookup</A>()</DT>
+<DD>Check if a specific semaphore is defined.</DD>
+<DT><A href="smt54.htm#semaph_destroy">semaph destroy</A>()</DT>
+<DD>Remove a semaphore from the SMT kernel tables.</DD>
+<DT><A href="smt55.htm#semaph_wait">semaph wait</A>()</DT>
+<DD>When the semaphore value is &gt; 0, decrement it.</DD>
+<DT><A href="smt56.htm#semaph_signal">semaph signal</A>()</DT>
+<DD>Add 1 to the semaphore value.</DD>
+<DT><A href="smt57.htm#lazy_creat">lazy creat</A>()</DT>
+<DD>Create a file, without blocking.</DD>
+<DT><A href="smt59.htm#lazy_open">lazy open</A>()</DT>
+<DD>Open a file, without blocking.</DD>
+<DT><A href="smt61.htm#lazy_read">lazy read</A>()</DT>
+<DD>Read from a file, without blocking.</DD>
+<DT><A href="smt62.htm#lazy_write">lazy write</A>()</DT>
+<DD>Write to a file, without blocking.</DD>
+<DT><A href="smt63.htm#lazy_close">lazy close</A>()</DT>
+<DD>Close a file, without blocking.</DD>
+<DT><A href="smt64.htm#senderr">senderr</A>()</DT>
+<DD>Send the current strerror (errno) to some queue.</DD>
+<DT><A href="smt65.htm#sendfmt">sendfmt</A>()</DT>
+<DD>Format a text using printf conventions and send to some
+queue.</DD>
+<DT><A href="smt66.htm#raise_exception">raise exception</A>()</DT>
+<DD>Raise an exception (for dialog programs only).</DD>
+<DT><A href="smt67.htm#recycle_module">recycle module</A>()</DT>
+<DD>Repeat execution of the current dialog module.</DD>
+</DL>
+
+<P>The SMT kernel API works with a number of objects - agents,
+threads, queues - which are defined as C structures.  The fields
+in these structures are the properties of the object.  The SMT
+objects contain <EM>private</EM> fields, which you should never
+change or refer to, and <EM>public</EM> fields, which you are free
+to change and use.  We do not discuss the private fields, except
+to note that these contain information that is internal to the SMT
+kernel, or reflect particular implementations that may change.
+
+<P>These are the SMT objects and their public fields:
+
+<PRE>
+AGENT                      /*  Agent descriptor                 */
+    AGENT  *next, *prev    /*    Doubly-linked list             */
+    NODE    methods        /*    Methods accepted by agent      */
+    NODE    queues         /*    Queues defined for agent       */
+    char   *name           /*    Agent's name                   */
+    Bool    router         /*    Default = FALSE                */
+    int     priority       /*    Default = SMT_PRIORITY_NORMAL  */
+    long    max_threads    /*    Default = 0 (no limit)         */
+    long    cur_threads    /*    Current number of threads      */
+    long    top_threads    /*    Max. number threads we had     */
+    long    thread_tally   /*    How many threads created       */
+    long    switch_tally   /*    How many context switches      */
+</PRE>
+
+<P>An agent defines one program written using the Libero SMT
+schema.  When the generated code initialises, it automatically
+creates an agent object.  You may change the router, priority, and
+max_threads fields, but not the other fields.
+
+<PRE>
+METHOD                     /*  Method descriptor                */
+    METHOD *next, *prev    /*    Doubly-linked list             */
+    AGENT  *agent          /*    Parent agent descriptor        */
+    char   *name           /*    Name of method                 */
+    int     priority       /*    Default = SMT_PRIORITY_NORMAL  */
+    int     event_number   /*    Internal event number          */
+</PRE>
+
+<P>The start-up code for an agent (in Initialise-The-Program)
+creates a method for each external event it wants to handle.  You
+may change the priority and event_number fields, but not the other
+fields.
+
+<PRE>
+THREAD                     /*  Thread descriptor                */
+    THREAD  *next, *prev   /*    Doubly-linked list             */
+    QUEUE   *queue         /*    Parent queue descriptor        */
+    long     thread_id     /*    Thread identifier number       */
+    char    *name          /*    Name of thread                 */
+    Bool     animate       /*    Animate this thread            */
+    void    *tcb           /*    Thread context block (TCB)     */
+    EVENT   *event         /*    Last-received event            */
+</PRE>
+
+<P>Any part of the application can create a thread in an agent, if
+it knows the name of the agent.  You may change the animate field,
+but not the other fields.
+
+<PRE>
+QUEUE                      /*  Event queue descriptor           */
+    QUEUE  *next, *prev    /*    Doubly-linked list             */
+    AGENT  *agent          /*    Parent agent descriptor        */
+    NODE    events         /*    Events in queue                */
+    NODE    threads        /*    Threads for queue              */
+    QID     qid            /*    Queue ID descriptor            */
+    int     max_events     /*    Maximum allowed events         */
+    int     cur_events     /*    Current number of events       */
+</PRE>
+
+<P>The SMT kernel automatically creates event queues as needed.
+Generally it will create one event queue per thread.  When an
+agent is defined as a router, however, it only creates an event
+queue for the first thread.  You can also create floating event
+queues.  You may change the max_events fields, but not the other
+fields.  Note that each queue has a unique QID; this is the
+identifier for the queue, and the information you need to send an
+event to a queue.
+
+<PRE>
+EVENT                      /*  Event in queue                   */
+    EVENT  *next, *prev    /*    Doubly-linked list             */
+    QUEUE  *queue          /*    Parent queue descriptor        */
+    QID     sender         /*    Replies come back here         */
+    char   *name           /*    Name of event                  */
+    size_t  body_size      /*    Size of event body in bytes    */
+    char   *body           /*    Event body                     */
+    char   *accept_event   /*    Reply if we accept event       */
+    char   *reject_event   /*    Reply if we reject event       */
+    char   *expire_event   /*    Reply if we expire event       */
+    time_t  timeout        /*    Expires at this time (or 0)    */
+</PRE>
+
+<P>Any part of the application can send an event to an event queue
+using the event_send() function.  The queue may be served by a
+thread, or not (if it is a floating event queue).  You should not
+change any of the fields in the event object: the sender, body,
+and body_size fields are generally interesting.
+
+<PRE>
+SEMAPH                     /*  Semaphore definition             */
+    SEMAPH  *next, *prev;  /*    Doubly-linked list             */
+    char    *name;         /*    Name of semaphore              */
+</PRE>
+
+<P>Semaphores are for synchronising agents, for instance for
+exclusive access to some resource.  We implement general
+semaphores, i.e. they can take any value of 0 or greater (the
+value is defined as an integer).
+
+<H3><A NAME="TOC19">Initialisation and Termination</A></H3>
+
+<P>An SMT application must explicitly initialise and shut-down the
+SMT kernel.  This lets the kernel create global objects (such as
+the symbol table) and then destroy them when finished.
+
+<P>The <A href="smt21.htm#smt_init">smt init</A>() function initialises the SMT kernel.  The
+<A href="smt22.htm#smt_term">smt term</A>() function shuts-down the SMT kernel.  These are
+generally the first and last SMT functions that the application
+calls.  Usually, we'll put these calls in the stub (main)
+program.
+
+<P>Any part of the application can call <A href="smt28.htm#smt_atexit">smt atexit</A>() to
+register a shut-down function; these shut-down functions are
+called by <A href="smt22.htm#smt_term">smt term</A>(), in the order that you declare them.
+
+<H3><A NAME="TOC20">Creating A Thread</A></H3>
+
+<P>Any program can create a thread in any agent in the application
+using the thread_create() function.  To create a thread you must
+know the name of the agent and the name of the thread you want to
+create.
+
+<P>A thread's name is local within the agent, and lets an outside
+program look-up the event queue for that thread.  There are
+various ways to name threads.  In single-threaded agents, it is
+useful to leave the thread name empty (specified as an empty
+string - "").  In multithreaded agents, the thread name can
+correspond to some resource name.  For instance, in the echo
+agent, the thread uses the connection socket number as its name.
+In a <EM>router</EM> agent, several threads can have the same
+name; since the threads in such an agent share the same event
+queue, this allows a program to unambigouously find the event
+queue from the thread name.
+
+<P>This is how a single-threaded agent (e.g. the operator console)
+creates a thread:
+
+<PRE>
+    /*  Create initial, unnamed thread                          */
+    <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "");
+</PRE>
+
+<P>This is how the <A href="smt12.htm#SMTECHO">echo agent</A> creates a thread to
+handle a new connection (tcb-&gt; handle contains the handle of
+the echo master socket):
+
+<PRE>
+    SOCKET
+        slave_socket;           /*  Connected socket            */
+    static char
+        thread_name [12];       /*  Socket number as string     */
+
+    slave_socket = accept_socket (tcb-&gt; handle);
+    if (slave_socket != INVALID_SOCKET)
+      {
+        sprintf (thread_name, "%d", slave_socket);
+        <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, thread_name);
+      }
+</PRE>
+
+<H3><A NAME="TOC21">Sending and Receiving Events</A></H3>
+
+<P>These are the API functions that you can use to send an event:
+<DL>
+<DT><A href="smt41.htm#event_send">event send</A>()</DT>
+<DD>Send an event to some event queue.</DD>
+<DT><A href="smt64.htm#senderr">senderr</A>()</DT>
+<DD>Send the current strerror (errno) to some queue.</DD>
+<DT><A href="smt65.htm#sendfmt">sendfmt</A>()</DT>
+<DD>Format a text using printf conventions and send to some
+queue.</DD>
+</DL>
+
+<P>In all cases, the target queue is specified as a <EM>QID</EM>.
+The QID is a location-independent queue identifier that the SMT
+kernel creates for each queue.  We use a QID instead of the
+address of the queue object so that events can be sent between
+processes running in different address spaces.  (Although this is
+not yet implemented.)
+
+<P>When you send an event, you specify an event name.  An agent
+program must have declared a method for each event it can accept.
+There is no such restriction for other programs that manage event
+queues themselves.
+
+<P>An event has a body, which is a block of text or binary data
+that is copied to the receiving event queue.  You should always
+ensure that event bodies are portable, since the receiving event
+queue could in principle be on a different system.  Furthermore,
+an event body cannot include the address of an object or variable:
+events can cross address spaces (i.e. be sent to other processes)
+so that such addresses are not meaningful.
+
+<H3><A NAME="TOC22">Sending An Initial Event To A Thread</A></H3>
+
+<P>You can send an event to a thread as soon as it has been
+created.  This can be useful if you need to pass arguments to a
+child thread.  The event will be delivered <EM>after</EM> the
+initialise_the_thread module, if you do not specify a value for
+<TT>the_next_event</TT>.  For an example, see the echo agent
+<A href="smt12.htm#SMTECHO">SMTECHO</A>.
+
+<H3><A NAME="TOC23">Event Lifespan and Acknowledgment</A></H3>
+
+<P>The <A href="smt41.htm#event_send">event send</A>() call lets a program specify these optional
+arguments:
+<UL>
+<LI>Reply queue - usually the queue for the thread or program that
+sent the event.
+<LI>Accept event - an event that is returned when the event has
+been sucessfully delivered (though not necessarily processed).  If
+left unspecified, the caller will not be informed when the event
+is delivered.
+<LI>Reject event - an event that is returned if the event is
+rejected by the recipient.  (Typically it is not accepted by the
+thread in its current state.)  If left unspecified, the caller
+will not be informed when the event is rejected.
+<LI>Timeout - a timeout in seconds after which the event will
+expire.
+<LI>Expire event - an event that is returned when the event has
+expired dues to a timeout.  If left unspecified, the caller will
+not be informed when the event expires.
+</UL>
+
+<P>When a program wants to inspect the events in a queue, it uses
+<A href="smt46.htm#event_iterate">event iterate</A>(), which walks through the queue, event by
+event. To take an event off the queue, a program calls
+<A href="smt42.htm#event_accept">event accept</A>(). This automatically sends an accept event, if
+specified.
+If queue is empty it simply returns with an 'not found' feedback.
+Some programs implement event priorities by combining
+<A href="smt46.htm#event_iterate">event iterate</A>() with <A href="smt42.htm#event_accept">event accept</A>().  A program may
+manipulate several event queues.
+
+<P>To remove an event without using it, a program calls
+<A href="smt47.htm#event_destroy">event destroy</A>().  The <A href="smt47.htm#event_destroy">event destroy</A>() call automatically
+sends a reject event, if specified.
+
+<P>The SMT kernel handles event expiry automatically for native
+programs.  Programs that handle floating event queues must expire
+old events explicitly by calling <A href="smt40.htm#queue_flush">queue flush</A>() before they
+start to process waiting events.
+
+<H3><A NAME="TOC24">Using Priorities</A></H3>
+
+<P>The SMT kernel provides support for event priorities and for
+thread priorities.  These work as follows:
+<UL>
+<LI>When several events are waiting to be delivered to an agent,
+the event with the highest priority is always delivered first.
+When several events have the same priority, the oldest event is
+delivered first.
+<LI>When a thread is scheduled for execution it is always
+scheduled before the first thread with a lower priority.
+</UL>
+
+<P>In practice we use priorities rarely, and for specific cases
+only.  In the current version of the SMT kernel we use a high
+priority for shutdown events, and a low priority for the socket
+agent.  All other events and threads have normal (equal)
+priority.
+
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt1.htm">&lt;</A>
+ | <A href="smt3.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

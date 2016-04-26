@@ -1,0 +1,160 @@
+<HTML>
+<BODY BACKGROUND="newstone.gif">
+<H1>smttran.l</H1>
+<HR>
+<PRE>
+!----------------------------------------------------------------------------
+!   Name:       smttran.l
+!   Title:      Dialog for SMT transfer agent
+!   Package:    Libero SMT 2.x
+!
+!   Written:    1996/09/05  iMatix SMT kernel team <A HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+!   Revised:    1999/08/282
+!
+!   Copyright:  Copyright (c) 1991-2000 iMatix Corporation
+!   License:    This is free software; you can redistribute it and/or modify
+!               it under the terms of the SMT License Agreement as provided
+!               in the file LICENSE.TXT.  This software is distributed in
+!               the hope that it will be useful, but without any warranty.
+!----------------------------------------------------------------------------
+-schema=smtschm.c
+
+<A NAME="afterinit">After-Init</A>:
+    (--) Master                             -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          +
+    (--) Pipe-Manager                       -&gt; <A HREF="#refreshpipes">Refresh-Pipes</A>
+          + <A HREF="smttrans.htm#waitforpiperefresh" TARGET="source">Wait-For-Pipe-Refresh</A>
+    (--) Put-File                           -&gt; <A HREF="#filebufferout">File-Buffer-Out</A>
+          + <A HREF="smttrans.htm#openfileforinput" TARGET="source">Open-File-For-Input</A>
+          + <A HREF="smttrans.htm#readfiledatabuffer" TARGET="source">Read-File-Data-Buffer</A>
+          + <A HREF="smttrans.htm#convertasciitonetifreqd" TARGET="source">Convert-Ascii-To-Net-If-Reqd</A>
+          + <A HREF="smttrans.htm#putbuffertosocket" TARGET="source">Put-Buffer-To-Socket</A>
+    (--) Get-File                           -&gt; <A HREF="#filebufferin">File-Buffer-In</A>
+          + <A HREF="smttrans.htm#openfileforoutput" TARGET="source">Open-File-For-Output</A>
+          + <A HREF="smttrans.htm#getbufferfromsocket" TARGET="source">Get-Buffer-From-Socket</A>
+
+<A NAME="gettingevent">Getting-Event</A>:
+    (--) Put-Block                          -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#createputblockrequest" TARGET="source">Create-Put-Block-Request</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+          + <A HREF="smttrans.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Get-Block                          -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#creategetblockrequest" TARGET="source">Create-Get-Block-Request</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+          + <A HREF="smttrans.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Put-Huge                           -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#createputhugerequest" TARGET="source">Create-Put-Huge-Request</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+          + <A HREF="smttrans.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Get-Huge                           -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#creategethugerequest" TARGET="source">Create-Get-Huge-Request</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+          + <A HREF="smttrans.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Put-File                           -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#createputfilethread" TARGET="source">Create-Put-File-Thread</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+          + <A HREF="smttrans.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Get-File                           -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#creategetfilethread" TARGET="source">Create-Get-File-Thread</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+          + <A HREF="smttrans.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Pipe-Create                        -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#createtransferpipe" TARGET="source">Create-Transfer-Pipe</A>
+          + <A HREF="smttrans.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Clear-Pipes                        -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#destroyalltransferpipes" TARGET="source">Destroy-All-Transfer-Pipes</A>
+          + <A HREF="smttrans.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Commit                             -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#okayifnorequestsleft" TARGET="source">Okay-If-No-Requests-Left</A>
+          + <A HREF="smttrans.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Empty                              -&gt; <A HREF="#gettingevent">Getting-Event</A>
+!   We wait for an incoming event
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+    (--) Alarm                              -&gt; <A HREF="#gettingevent">Getting-Event</A>
+!   Several events could cause an eventual alarm - we loop
+          + <A HREF="smttrans.htm#regeneratealarmevent" TARGET="source">Regenerate-Alarm-Event</A>
+    (--) Write-Ok                           -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#updaterequestafterwrite" TARGET="source">Update-Request-After-Write</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+    (--) Read-Ok                            -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#updaterequestafterread" TARGET="source">Update-Request-After-Read</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+    (--) Writeh-Ok                          -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#updaterequestafterwriteh" TARGET="source">Update-Request-After-Writeh</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+    (--) Readh-Ok                           -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#updaterequestafterreadh" TARGET="source">Update-Request-After-Readh</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+    (--) Sock-Closed                        -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#updaterequestafterclosed" TARGET="source">Update-Request-After-Closed</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+    (--) Sock-Error                         -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smttrans.htm#updaterequestaftererror" TARGET="source">Update-Request-After-Error</A>
+          + <A HREF="smttrans.htm#processtransferrequests" TARGET="source">Process-Transfer-Requests</A>
+
+<A NAME="filebufferout">File-Buffer-Out</A>:
+    (--) Write-Ok                           -&gt; <A HREF="#filebufferout">File-Buffer-Out</A>
+          + <A HREF="smttrans.htm#readfiledatabuffer" TARGET="source">Read-File-Data-Buffer</A>
+          + <A HREF="smttrans.htm#convertasciitonetifreqd" TARGET="source">Convert-Ascii-To-Net-If-Reqd</A>
+          + <A HREF="smttrans.htm#putbuffertosocket" TARGET="source">Put-Buffer-To-Socket</A>
+    (--) Incomplete                         -&gt; <A HREF="#filebufferout">File-Buffer-Out</A>
+          + <A HREF="smttrans.htm#putbuffertosocket" TARGET="source">Put-Buffer-To-Socket</A>
+!   Alarm sent if we have to wait for pipe to be available
+    (--) Alarm                              -&gt; <A HREF="#filebufferout">File-Buffer-Out</A>
+          + <A HREF="smttrans.htm#putbuffertosocket" TARGET="source">Put-Buffer-To-Socket</A>
+    (--) Sock-Closed                        -&gt;
+          + <A HREF="smttrans.htm#signalsocketclosed" TARGET="source">Signal-Socket-Closed</A>
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Sock-Error                         -&gt;
+          + <A HREF="smttrans.htm#signalsocketerror" TARGET="source">Signal-Socket-Error</A>
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="filebufferin">File-Buffer-In</A>:
+    (--) Read-Ok                            -&gt; <A HREF="#filebufferin">File-Buffer-In</A>
+          + <A HREF="smttrans.htm#convertnettoasciiifreqd" TARGET="source">Convert-Net-To-Ascii-If-Reqd</A>
+          + <A HREF="smttrans.htm#writefiledatabuffer" TARGET="source">Write-File-Data-Buffer</A>
+          + <A HREF="smttrans.htm#getbufferfromsocket" TARGET="source">Get-Buffer-From-Socket</A>
+!   Alarm sent if we have to wait for pipe to be available
+    (--) Alarm                              -&gt; <A HREF="#filebufferin">File-Buffer-In</A>
+          + <A HREF="smttrans.htm#getbufferfromsocket" TARGET="source">Get-Buffer-From-Socket</A>
+    (--) Sock-Closed                        -&gt;
+          + <A HREF="smttrans.htm#signalgetfileokay" TARGET="source">Signal-Get-File-Okay</A>
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Sock-Error                         -&gt;
+          + <A HREF="smttrans.htm#signalsocketerror" TARGET="source">Signal-Socket-Error</A>
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="refreshpipes">Refresh-Pipes</A>:
+    (--) Alarm                              -&gt; <A HREF="#refreshpipes">Refresh-Pipes</A>
+          + <A HREF="smttrans.htm#refreshallpipes" TARGET="source">Refresh-All-Pipes</A>
+          + <A HREF="smttrans.htm#waitforpiperefresh" TARGET="source">Wait-For-Pipe-Refresh</A>
+
+<A NAME="defaults">Defaults</A>:
+    (--) Shutdown                           -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smttrans.htm#checkthreadtype" TARGET="source">Check-Thread-Type</A>
+    (--) Exception                          -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smttrans.htm#checkthreadtype" TARGET="source">Check-Thread-Type</A>
+    (--) End-Of-File                        -&gt;
+          + <A HREF="smttrans.htm#signalputfileokay" TARGET="source">Signal-Put-File-Okay</A>
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Error                              -&gt;
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Ok                                 -&gt;
+          +
+
+<A NAME="endthread">End-Thread</A>:
+    (--) Master                             -&gt;
+          + <A HREF="smttrans.htm#destroyallrequests" TARGET="source">Destroy-All-Requests</A>
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Pipe-Manager                       -&gt;
+          + <A HREF="smttrans.htm#destroyalltransferpipes" TARGET="source">Destroy-All-Transfer-Pipes</A>
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Put-File                           -&gt;
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Get-File                           -&gt;
+          + <A HREF="smttrans.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+</PRE>
+<HR>
+<P>Generated by <A HREF="http://www.imatix.com">
+Framer 1.0 &#169; 1997 iMatix</A></P>
+</BODY></HTML>

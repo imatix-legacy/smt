@@ -1,0 +1,77 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtoper_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt77.htm">&lt;</A>
+ | <A href="smt79.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtoper_init">&nbsp;</A>
+<H3><A NAME="TOC124"><TT>smtoper_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int
+smtoper_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT operator agent. Returns 0 if initialised
+   okay, -1 if there was an error. The operator agent writes
+   messages to the standard error device. More sophisticated
+   implementations could send messages to consoles. Creates one
+   unnamed thread automatically. Supports these public methods:
+   <TABLE BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>ERROR</B>  <TD
+   ALIGN="LEFT">Handle event as a serious error message. <TR><TD
+   ALIGN="LEFT"><B>WARNING</B>  <TD ALIGN="LEFT">Handle event as a
+   warning message. <TR><TD ALIGN="LEFT"><B>INFO</B>  <TD
+   ALIGN="LEFT">Handle event as an information message. <TR><TD
+   ALIGN="LEFT"><B>SET LOG</B>  <TD ALIGN="LEFT">Send all output
+   to specified thread. <TR><TD ALIGN="LEFT"><B>DISABLE</B>  <TD
+   ALIGN="LEFT">Console ignores all messages. <TR><TD
+   ALIGN="LEFT"><B>ENABLE</B>  <TD ALIGN="LEFT">Console handles
+   messages (default). </TABLE> Does not send reply events.
+<H4>Source Code - (smtoper.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle for initial thread        */
+
+#   include "smtoper.i"                 /*  Include dialog interpreter       */
+
+    /*  We give this agent a high priority, so that we get to see messages   */
+    /*  and errors as soon as possible.                                      */
+    agent-&gt; priority = SMT_PRIORITY_HIGH;
+
+    /*                      Method name     Event value      Priority        */
+    /*  Shutdown event comes from Kernel, normal priority so we can show     */
+    /*  incoming messages before we shut down.                               */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",      shutdown_event,  0);
+
+    /*  Public methods supported by this agent                               */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SET_LOG",       log_event,       0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "ERROR",         error_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "WARNING",       warning_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "INFO",          info_event,      0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "DISABLE",       disable_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "ENABLE",        enable_event,    0);
+
+    /*  Create initial, unnamed thread                                       */
+    thread = <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "");
+    <A href="smt26.htm#smt_set_console">smt set console</A> (&amp;thread-&gt; queue-&gt; qid);
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt77.htm">&lt;</A>
+ | <A href="smt79.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

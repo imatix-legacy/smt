@@ -1,0 +1,157 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The Timer Agent - SMTTIME</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt7.htm">&lt;</A>
+ | <A href="smt9.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="SMTTIME">&nbsp;</A>
+<H3><A NAME="TOC45">The Timer Agent - SMTTIME</A></H3>
+
+<P>Generates timing events.  You can request one timing event
+after a specific delay, or repeated timing events at regular
+intervals.  The timer is accurate to 1/100th of a second.  You
+specify delays as a number of days and a number of
+centiseconds.
+
+<P>To use SMTTIME, call <A href="smt82.htm#smttime_init">smttime init</A>().  This creates a single
+unnamed thread automatically the first time it is called, and has
+no effect thereafter.  You can then send messages to this thread.
+It supports these methods:
+<UL>
+<LI>ALARM - send alarm event after specified delay.
+<LI>WAKEUP - send alarm event at some specific day and time.
+<LI>CLOCK - send alarm events at regular intervals.
+<LI>FLUSH - flush any requests for a client thread.
+</UL>
+
+<P>Example of initialising SMTTIME:
+
+<PRE>
+/*  Static data                                                 */
+static QID
+    timeq;                      /*  Timer agent event queue     */
+
+    /*  In agent initialisation code                            */
+    THREAD  *thread;            /*  Handle to various threads   */
+
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIME_ALARM", alarm_event, 0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIME_ERROR", error_event, 0);
+
+    /*  Ensure that timer agent is running, else start it       */
+    <A href="smt82.htm#smttime_init">smttime init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_TIMER, "")) != NULL)
+        timeq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+</PRE>
+
+<H4>The ALARM Method</H4>
+
+<P>Sends a single alarm event after some specified delay.  Build
+the event body using exdr_write() and the message definition
+SMT_TIME_ALARM.  The event body consists of these fields (see
+exdr_write() for the field types):
+<UL>
+<LI>[q] The delay, in days.
+<LI>[q] The delay, in 1/100th seconds.
+<LI>[mM] An argument block, returned with the alarm event.  This
+is arbitrary data, and may be NULL.
+</UL>
+SMTTIME replies to an ALARM event with one of these events:
+<UL>
+<LI>TIME_ALARM - the alarm went off.  The event body contains the
+argument block, if any.  Decode the event body, if you need to,
+using exdr_read() and the message definition SMT_TIME_REPLY.  The
+body contains these fields: [mM] the argument block.
+<LI>TIME_ERROR - there was an error that prevented the timer from
+working.  This can be handled as a fatal error.  At present the
+only cause for such an error is insufficient memory.  The event
+body contains an error message.
+</UL>
+<P>The ALARM method implicitly does a FLUSH before proceeding.
+
+<H4>The WAKEUP Method</H4>
+
+<P>Sends a single alarm event at some specified day and time.
+Build the event body using exdr_write() and the message definition
+SMT_TIME_ALARM.  The event body consists of these fields (see
+exdr_write() for the field types):
+<UL>
+<LI>[q] The alarm time in days.
+<LI>[q] The alarm time in 1/100th seconds.
+<LI>[mM] An argument block, returned with the alarm event.  This
+is arbitrary data, and may be NULL.
+</UL>
+SMTTIME replies to a WAKEUP event with one of these events:
+<UL>
+<LI>TIME_ALARM - the alarm went off.  The event body contains the
+argument block, if any.  Decode the event body, if you need to,
+using exdr_read() and the message definition SMT_TIME_REPLY.  The
+body contains these fields: [mM] the argument block.
+<LI>TIME_ERROR - there was an error that prevented the timer from
+working.  This can be handled as a fatal error.  At present the
+only cause for such an error is insufficient memory.  The event
+body contains an error message.
+</UL>
+<P>The WAKEUP method implicitly does a FLUSH before proceeding.
+
+<H4>The CLOCK Method</H4>
+
+<P>Sends a repeated alarm event after some specified delay, for
+ever, or a specific number of times.  Build the event body using
+exdr_write() and the message definition SMT_TIME_CLOCK.  The event
+body consists of these fields (see exdr_write() for the field
+types):
+<UL>
+<LI>[q] The delay, in days.
+<LI>[q] The delay, in 1/100th seconds.
+<LI>[w] A number of times to cycle; zero means forever.
+<LI>[mM] An argument block, returned with the alarm event.  This
+is arbitrary data, and may be NULL.
+</UL>
+SMTTIME replies to a CLOCK event with one of these events:
+<UL>
+<LI>TIME_ALARM - the alarm went off.  The event body contains the
+argument block, if any.  Decode the event body, if you need to,
+using exdr_read() and the message definition SMT_TIME_REPLY.  The
+body contains these fields: [mM] the argument block.
+<LI>TIME_ERROR - there was an error that prevented the timer from
+working.  This can be handled as a fatal error.  At present the
+only cause for such an error is insufficient memory.  The event
+body contains an error message.
+</UL>
+<P>The CLOCK method implicitly does a FLUSH before proceeding.
+
+<H4>The FLUSH Method</H4>
+
+<P>Removes any requests sent by a particular client thread.  Use
+this to cancel a CLOCK method, or an unexpired ALARM or WAKEUP
+request.  You do not need to provide an event body, but you must
+specify your thread's QID correctly when you use event_send().
+SMTTIME does not reply to a FLUSH method.
+
+<H4>Example Of Use</H4>
+
+<P>The SMTTST1 test agent shows an example of using the timer
+agent.
+
+<H4>SMTTIME Implementation</H4>
+
+<P>The <A HREF="smttime.htm">hypertext view</A> of SMTTIME's dialog
+and source code may help to understand how SMTTIME works.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt7.htm">&lt;</A>
+ | <A href="smt9.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

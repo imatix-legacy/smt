@@ -1,0 +1,62 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>Standard SMT Agents</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt4.htm">&lt;</A>
+ | <A href="smt6.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC42">Standard SMT Agents</A></H2>
+
+<P>The SMT architecture lets one build an application out of
+existing and new agents.  We provide a number of standard agents.
+All these agents correctly support the <TT>shutdown</TT> method,
+which the SMT kernel broadcasts when it needs to end the
+application.
+
+<P>These are the standard SMT agents:
+<UL>
+<LI>The logging agent <A href="smt6.htm#SMTLOG">SMTLOG</A> - writes data to log files.
+<LI>The operator console <A href="smt7.htm#SMTOPER">SMTOPER</A> - handles error messages
+produced by other agents.
+<LI>The timer agent <A href="smt8.htm#SMTTIME">SMTTIME</A> - generates one-off or repeated
+timing events.
+<LI>The time-slot agent <A href="smt9.htm#SMTSLOT">SMTSLOT</A> - generates events
+according to a set of time-slots.
+<LI>The socket agent <A href="smt10.htm#SMTSOCK">SMTSOCK</A> - handles input and output on
+sockets.
+<LI>The transfer agent <A href="smt11.htm#SMTTRAN">SMTTRAN</A> - handles message and basic
+file transfer via TCP sockets.
+<LI>The TCP echo agent <A href="smt12.htm#SMTECHO">SMTECHO</A> - handles the TCP echo
+protocol.
+<LI>The HTTP agent <A href="smt13.htm#SMTHTTP">SMTHTTP</A> - handles the HTTP server
+protocol.
+<LI>The simulation agent <A href="smt14.htm#SMTSIMU">SMTSIMU</A> - simulates network delays.
+</UL>
+
+<P>These agents are in development, or planned:
+<UL>
+<LI>The FTP agent SMTFTP - handles the FTP protocol.
+<LI>The secure socket agent SMTSSL - handles input and output
+using the Secure Socket Layer protocol.
+<LI>The fileio agent SMTFILE - handles input and output to
+sequential files, with caching.
+<LI>The robust transfer protocol (RTP) agent SMTRTP - handles
+robust data transfer via UDP sockets.
+<LI>The zip/unzip agent SMTZIP - handles access to compressed
+files using the zip standard.
+</UL>
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt4.htm">&lt;</A>
+ | <A href="smt6.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

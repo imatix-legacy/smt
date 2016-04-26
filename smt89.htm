@@ -1,0 +1,95 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtsimu_write_UDP</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt88.htm">&lt;</A>
+ | <A href="smt90.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtsimu_write_UDP">&nbsp;</A>
+<H3><A NAME="TOC135"><TT>smtsimu_write_UDP</TT></A></H3>
+<PRE>
+#include "smtsimu.h"
+int
+smtsimu_write_UDP (
+    sock_t handle,                      /*  Socket handle                    */
+    void  *buffer,                      /*  Buffer containing data           */
+    size_t length,                      /*  Amount of data to write          */
+    struct sockaddr_in *sin             /*  Address to send to, or null      */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Replaces the normal write_UDP() function call. The data is
+   sent, after a small but significant delay. Returns the length
+   of the data packet. There is no guarantee that the packet will
+   be sent and received successfully. Returns SOCKET_ERROR if
+   there was an error, such as insufficient memory.
+<H4>Source Code - (smtsimu.c)</H4>
+<PRE>
+{
+    SOCKREQ *request;                   /*  New socket transfer request      */
+    dbyte    req_size;                  /*  Size of transfer request         */
+    byte    *msg_body;                  /*  Event to send via delay timer    */
+    int      msg_size;                  /*  Size of event body               */
+    qbyte    csecs = 100;               /*  Delay time in csecs              */
+
+    /*  Allocate a new transfer request                                      */
+    req_size = sizeof (SOCKREQ) + length;
+    if ((request = mem_alloc (req_size)) == NULL)
+      {
+        <A href="smt65.htm#sendfmt">sendfmt</A> (&amp;operq, "ERROR", "smtsimu: out of memory");
+        return ((int) SOCKET_ERROR);
+      }
+    request-&gt; id     = ++last_id;
+    request-&gt; handle = handle;
+    request-&gt; length = length;
+    request-&gt; sin    = *sin;
+    memcpy ((byte *) request + sizeof (SOCKREQ), buffer, length);
+
+    /*  Calculate size required for message body                             */
+    msg_size = exdr_write (
+        NULL,                           /*  No body - just get size          */
+        SMT_TIME_ALARM,                 /*  Format event for smttime         */
+        0, csecs,                       /*  Delay time                       */
+        req_size, request);             /*  Request info                     */
+
+    /*  Now allocate and format the buffer                                   */
+    msg_body = mem_alloc  (msg_size);
+    msg_size = exdr_write (
+        msg_body,                       /*  Event body                       */
+        SMT_TIME_ALARM,                 /*  Format event for smttime         */
+        0, csecs,                       /*  Delay time                       */
+        req_size, request);             /*  Request info                     */
+
+    <A href="smt41.htm#event_send">event send</A> (
+        &amp;timeq,                         /*  Send to specified queue          */
+        &amp;simuq,                         /*  No queue for reply               */
+        "ALARM",                        /*  Name of event to send            */
+        msg_body,                       /*  Event body contents              */
+        msg_size,                       /*  Event body size                  */
+        NULL, NULL, NULL,               /*  No response events               */
+        0);                             /*  No timeout                       */
+
+    mem_free (msg_body);
+    mem_free (request);
+
+    if (trace_flag)
+        <A href="smt65.htm#sendfmt">sendfmt</A> (&amp;operq, "INFO",
+                 "smtsimu: packet %u delayed by %u csecs", last_id, csecs);
+
+    return (length);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt88.htm">&lt;</A>
+ | <A href="smt90.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

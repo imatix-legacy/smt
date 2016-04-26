@@ -1,0 +1,109 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>method_declare</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt32.htm">&lt;</A>
+ | <A href="smt34.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="method_declare">&nbsp;</A>
+<H3><A NAME="TOC79"><TT>method_declare</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+METHOD *
+method_declare (
+    AGENT *agent,                       /*  Create method in this agent      */
+    const char *method_name,            /*  Name of method to declare        */
+    event_t event_number,               /*  Method number from dialog        */
+    int     priority                    /*  Priority for the method, or 0    */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Declares a new method for an agent. All external events that an
+   agent is prepared to method are declared as methods. The agent
+   must already have been declared using <A href="smt30.htm#agent_declare">agent declare</A>(). The
+   method name is an arbitrary text, unique within the agent. The
+   event number is the number of the event assigned by the dialog
+   code generator; if you specify the event number as
+   SMT_NULL_EVENT, the method is ignored. This discards any
+   incoming events with that name. The priority may be 0 (meaning
+   normal priority), SMT_PRIORITY_LOW, SMT_PRIORITY_HIGH, or
+   another suitable value. Returns the address of the created
+   METHOD block. If there was an error, returns NULL and sets
+   smt_errno to one of: <TABLE BORDER NOWRAP> <TR><TD
+   ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD ALIGN="LEFT">smt_init()
+   was not called, or failed <TR><TD ALIGN="LEFT"><B>SMT
+   OUTOFMEMORY</B>  <TD ALIGN="LEFT">Not enough heap memory left
+   <TR><TD ALIGN="LEFT"><B>SMT NOSUCHAGENT</B>  <TD
+   ALIGN="LEFT">Specified agent was not declared <TR><TD
+   ALIGN="LEFT"><B>SMT METHODEXISTS</B>  <TD ALIGN="LEFT">Method
+   is already declared </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    SYMBOL  *dict_entry;                /*  Dictionary symbol                */
+    METHOD  *method;                    /*  Method information block         */
+    char    *full_name;                 /*  Full method name                 */
+
+#if (defined (SMT_TRACE))
+    trace ("method_declare: agent=%s method=%s", agent-&gt; name, method_name);
+#endif
+    ASSERT (agent);
+    ASSERT (method_name);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (NULL);
+      }
+
+    /*  Check that method is not already declared                            */
+    full_name = get_method_name (agent-&gt; name, method_name);
+    if (sym_lookup_symbol (dict, full_name))
+      {
+        smt_errno = SMT_METHODEXISTS;
+        return (NULL);
+      }
+
+    /*  Now create entry for the method                                      */
+    dict_entry = sym_create_symbol (dict, full_name, NULL);
+    if (dict_entry == NULL)
+      {
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Allocate a METHOD block and attach it to the method list             */
+    method = (METHOD *) node_create (&amp;agent-&gt; methods, sizeof (METHOD));
+    if (method == NULL)
+      {
+        sym_delete_symbol (dict, dict_entry);
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Point the dictionary entry to the method information block           */
+    dict_entry-&gt; data = method;
+
+    /*  Now initialise the method - all fields are already set to zero       */
+    method-&gt; symbol       = dict_entry;
+    method-&gt; agent        = agent;
+    method-&gt; name         = mem_strdup (method_name);
+    method-&gt; priority     = priority? priority: SMT_PRIORITY_NORMAL;
+    method-&gt; event_number = event_number;
+
+    return (method);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt32.htm">&lt;</A>
+ | <A href="smt34.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,54 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The HTTP Agent - SMTHTTP</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt12.htm">&lt;</A>
+ | <A href="smt14.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="SMTHTTP">&nbsp;</A>
+<H3><A NAME="TOC50">The HTTP Agent - SMTHTTP</A></H3>
+
+<P>Provides the HTTP service on port 80.
+
+<P>To use SMTHTTP, call <A href="smt73.htm#smthttp_init">smthttp init</A>().  This initialises the
+HTTP service on TCP port 80.  If you set the global variable
+ip_portbase to some value before initialising SMTHTTP, the HTTP
+port is moved by that value.  For instance, if you set ip_portbase
+to 8000, the HTTP port is 8080.  This lets you run the service in
+'user space': on most systems you need root access to use ports
+below 1000.
+
+<P>To connect to a webserver running on some system at port 8080,
+use this URL: <TT>http://hostname:8080/</TT>.
+
+<P>The current implementation of SMTHTTP is quite sophisticated.
+It will look for <TT>default.htm</TT>, <TT>default.html</TT>,
+<TT>index.htm</TT>, <TT>index.html</TT> in that order if no
+filename is specified.  The file <TT>smthttp.aut</TT> defines
+directories that are protected by username/password definitions.
+You can find the full documentation for the web server in the
+Xitami package.
+
+<P>The program <TT>xitami.c</TT> is a fairly complete web server
+based on the SMTHTTP agent.  You can use this program as-is, or
+as a basis for your own work.
+
+<H4>SMTHTTP Implementation</H4>
+
+<P>The <A HREF="smthttp.htm">hypertext view</A> of SMTHTTP's dialog
+and source code may help to understand how SMTHTTP works.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt12.htm">&lt;</A>
+ | <A href="smt14.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

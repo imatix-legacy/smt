@@ -1,0 +1,81 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtupmc_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt90.htm">&lt;</A>
+ | &gt; | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtupmc_init">&nbsp;</A>
+<H3><A NAME="TOC137"><TT>smtupmc_init</TT></A></H3>
+<PRE>
+#include "smtupm.h"
+int
+smtupmc_init (char *p_args, char *p_portname)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT UPM client agent. Returns 0 if okay, -1 if
+   there was an error. The UPM client agent allows you to pass
+   commands to the UPM daemon. See the SMT documentation for
+   details.
+<H4>Source Code - (smtupmc.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle to console thread         */
+#   include "smtupmc.i"                 /*  Include dialog interpreter       */
+
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN", shutdown_event, SMT_PRIORITY_MAX);
+
+    /*  Reply events from socket agent                                       */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_INPUT_OK",  ok_event,          0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_OUTPUT_OK", ok_event,          0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_READ_OK",   ok_event,          0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_WRITE_OK",  ok_event,          0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_CLOSED",    sock_closed_event, 0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_ERROR",     sock_error_event,  0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_TIMEOUT",   sock_error_event,  0);
+
+    /*  Reply events from transfer agent                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TRAN_GETF_OK",   ok_event,          0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TRAN_PUTF_OK",   SMT_NULL_EVENT,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TRAN_CLOSED",    sock_closed_event, 0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TRAN_ERROR",     sock_error_event,  0);
+
+    /*  Create initial, unnamed thread                                       */
+    <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "");
+
+    /*  Ensure that socket agent is running, else start it up                */
+    <A href="smt80.htm#smtsock_init">smtsock init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_SOCKET, "")) != NULL)
+        sockq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that transfer agent is running, else start it up              */
+    <A href="smt83.htm#smttran_init">smttran init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_TRANSFER, "")) != NULL)
+        tranq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Signal okay to caller that we initialised okay                       */
+    args     = p_args;                  /*  Get command-line arguments       */
+    portname = p_portname;
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt90.htm">&lt;</A>
+ | &gt; | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

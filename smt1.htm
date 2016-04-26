@@ -1,0 +1,304 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The SMT Kernel Architecture</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt.htm">&lt;</A>
+ | <A href="smt2.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC8">The SMT Kernel Architecture</A></H2>
+
+<H3><A NAME="TOC9">Structure Of An SMT Application</A></H3>
+
+<P>An SMT application generally consists of a number of
+<EM>agents</EM>, connected to the SMT kernel:
+
+<PRE>
+                     .------------.
+                     : SMT kernel |
+                     `============"
+                            |
+     - -+------------+------+-----+------------+- -
+        |            |            |            |
+    .-------.    .-------.    .-------.    .-------.
+    : Agent |    : Agent |    : Agent |    : Agent |
+    `======="    `======="    `======="    `======="
+
+Figure: Regular SMT application
+</PRE>
+
+<P>We may also use an event driver to make an 'embedded
+application'.  This is necessary when external events cannot be
+collected by a normal SMT agent program such as the socket i/o
+agent.  An example of such an application is one designed for MS
+Windows.
+
+<PRE>
+                     .--------------.
+                     : Event Driver |
+                     `=============="
+                            |
+                     .------------.
+                     : SMT kernel |
+                     `============"
+                            |
+     - -+------------+------+-----+------------+- -
+        |            |            |            |
+    .-------.    .-------.    .-------.    .-------.
+    : Agent |    : Agent |    : Agent |    : Agent |
+    `======="    `======="    `======="    `======="
+
+Figure: Embedded SMT application
+</PRE>
+
+<P>There are many other types of SMT application.  The SMT kernel
+defines a number of objects, and operations on those objects.
+These objects are arranged in a hierarchy: this is structural, not
+morphological (they do not inherit attributes from each
+other):
+
+<PRE>
+         Agent
+           :            :  Method
+         Queue
+        /          Thread     Event
+
+Figure: Main SMT Objects
+</PRE>
+
+<UL>
+<LI>An SMT application consists of one or more <EM>agents</EM>.
+An agent is written as a single program, based on one Libero
+dialog definition (i.e. a finite state machine, or FSM).
+<LI>An agent declares one or more <EM>methods</EM> that it can
+process.  These are formal declarations of the <EM>events</EM>
+that the agent is prepared to accept.  An agent that declares a
+method "OPEN" will accept events called "OPEN".
+<LI>An agent contains zero or more event <EM>queues</EM>.  When
+you send an event somewhere, you send it to an event queue.
+<LI>An event queue is handled by one or more <EM>threads</EM>.  A
+thread is an instance of the finite-state machine program.
+<LI>An event queue contains zero or more events.  These are events
+waiting to be processed by the queue's thread(s).
+<LI>Agents, methods, threads, and events are named.  Queues are
+unnamed, and are referred-to by a <EM>queue id</EM> block, a token
+that the SMT kernel generates when it creates a new queue.
+</UL>
+
+<P>The SMT holds these objects in a set of linked lists.  Each
+thread, for instance, contains the reference of its parent queue;
+a queue refers to its parent agent.
+
+<PRE>
+                      .------------.
+                      : SMT kernel |
+                      `============"
+                             |
+       -+-------------+------+------+-------------+-
+        |             |             |             |
+                  .-------.
+                  : Agent |
+                  `======="
+                      |
+        +-------------+-------------+
+        |             |             |
+    .--------.    .--------.    .--------.
+    : Queue  |    : Queue  |    : Queue  |
+    `========"    `========"    `========"
+        |             |             |
+    .--------.    .--------.    .--------.
+    : Thread |    : Thread |    : Thread |
+    `========"    `========"    `========"
+
+Figure: Agent Program With 3 Threads
+</PRE>
+
+<H3><A NAME="TOC10">Floating Event Queues</A></H3>
+
+<P>In normal cases, events are sent to a queue that is held by an
+agent program.  Sometimes this is a limitation: we can see cases
+where non-agent programs also need to receive events.  Any program
+can send an event: this is just a call to the SMT kernel API.
+
+<P>We therefore define the concept of a <EM>floating event
+queue</EM>; that is, an event queue that is managed by some
+program that is not constructed as an agent:
+
+<PRE>
+        Program
+           :
+         Queue
+           :
+         Event
+
+Figure: Floating Event Queue
+</PRE>
+
+<P>The designer of the application must also find a way to service
+the event queue, since the SMT kernel cannot schedule and execute
+such a program.
+
+<H3><A NAME="TOC11">Routers</A></H3>
+
+<P>In most cases, one queue is served by one thread.  Thus, when
+you send an event to a queue, you are effectively sending it to a
+specific thread.
+
+In some cases, it is better to share one queue among several
+threads.  Imagine an agent that executes database requests coming
+from a set of clients.  A thread takes an event, processes it, and
+returns a reply.  Each event is independent, and may take some
+time to process.  It makes sense to start several threads, so that
+several events can be processed in parallel.  It would be wrong to
+allocate one queue per thread, however, for two reasons.  Firstly,
+this implies that there are N queues which the clients must know
+about.  Secondly, it implies that someone (client or agent)
+chooses a queue for each event.  Consequently, events may be
+waiting in the queue for one thread while another thread is idle.
+By allocating just one queue, shared between all the agent
+threads, events are processed at full speed, in arrival order.
+
+<P>An agent is either defined as a <EM>router</EM>, or not.  When
+an agent is a router, it is legal to create multiple threads with
+the same name.  All threads in a router agent share a single event
+queue.
+
+<H3><A NAME="TOC12">Internal and External Events</A></H3>
+
+<P>SMT agents are built as event-driven Libero programs.  We
+define two kinds of event: an <EM>internal event</EM> (supplied by
+the program itself) and an <EM>external event</EM> (taken from the
+event queue).  If we consider a normal Libero program, all events
+are internal.  The SMT kernel adds the concept of external
+events.
+
+<P>When you design the program dialog, you do not distinguish
+internal and external events.  Indeed, a name like "Ok" can be
+used for both types of event.
+
+<P>The SMT kernel <EM>delivers</EM> an external event when the
+program did not supply an internal event itself.  This occurs at a
+state transition, i.e. after executing the action modules for an
+event.  When an external event is delivered, it is converted into
+an appropriate internal event.
+
+<P>To put it another way: if none of the action modules put a
+value into the_next_event, then the SMT kernel will pull an event
+from the event queue, translate it into a suitable value, and put
+that into the_next_event instead.
+
+<P>The <EM>methods</EM> define the translation from external event
+to internal event.  External events that do not match declared
+methods are rejected.  This is usually a programming error, so an
+error message is sent to the console.
+
+<H3><A NAME="TOC13">Event Management</A></H3>
+
+<P>The SMT kernel provides an level of event management.  Firstly,
+it will destroy undelivered events after a specified expiry
+period.  Secondly, it will automatically send return events to
+acknowledge receipt or non-receipt of an event.  This works as
+follows: when you send an event, you may specify reply events for
+delivery, rejection, and expiry.
+
+<H3><A NAME="TOC14">Priorities and Scheduling</A></H3>
+
+<P>The SMT kernel has a simple priority and scheduling mechanism.
+Agents run with a certain priority level (a number from 1 to 255).
+When the SMT kernel delivers events to threads, it schedules the
+threads for execution, by placing them in a queue (the <EM>active
+list</EM>).  Threads with higher priorities are placed at the
+start of the active list.  No account is taken of the time spent
+in the active list, so it is quite possible for a set of
+high-priority threads to take-up all execution time.  This
+normally does not happen, since such threads will eventually wait
+for events from somewhere else, so become passive.
+
+<P>Events have a similar priority level, defined by the accepting
+program, in the event method.  When the SMT kernel delivers an
+event, it chooses the event with the highest priority.  One
+example of a high-priority event is <EM>shutdown</EM>, which is
+sent to all threads when the SMT kernel receives a 'kill' signal
+(i.e. when someone decides to stop the running program).
+
+<P>You can change agent and event priorities on the fly, although
+this may get a little complex to manage.  You can also process the
+events in an event queue directly, without waiting for the SMT
+kernel to deliver each one.
+
+<P>In general we recommend that you leave agents and events with
+unspecified priority - i.e. the normal priority level - unless
+there are good reasons for doing otherwise.
+
+<H3><A NAME="TOC15">Native Programs Vs. Foreign Programs</A></H3>
+
+<P>A <EM>native program</EM> is designed as a finite-state machine
+(FSM) and built using Libero and the smtschm.c schema.  A native
+program can be multithreaded.  It is tightly integrated with the
+SMT kernel: the kernel supplies events to the program, schedules
+and executes threads, etc.
+
+<P>A <EM>native program</EM> is also called a <EM>agent</EM>. The
+two terms are equivalent.
+
+<P>A <EM>foreign program</EM> is not based on the smtschm.c
+schema.  It is always single threaded, and while it may call SMT
+kernel functions, it is not integrated with the kernel.  Typically
+a foreign program calls the SMT kernel to send and receive events
+and manage floating event queues.
+
+<H3><A NAME="TOC16">The SMT Kernel Meta-State-Machine</A></H3>
+
+<P>We can consider the application (an ensemble of agents, queues,
+threads, and events) as a meta-state-machine (i.e. a state machine
+that defines a set of state machines).  The application has three
+states:
+<UL>
+<LI><EM>Latent</EM>: we are initialising, but not yet ready to
+start executing the threads.
+<LI><EM>Active</EM>: we are executing threads.
+<LI><EM>Halted</EM>: there are no more active threads, and no
+events left to deliver.
+</UL>
+
+<P>We do not usually define this as a Libero dialog, though it is
+possible to do so.  What we must do is to write a foreign program,
+a <EM>stub</EM>, that implements the application meta-state-
+machine.  This is the stub for an Internet ECHO daemon, showing
+the three states:
+
+<PRE>
+#include "sfl.h"                   /*  SFL library header file  */
+#include "smtlib.h"                /*  SMT kernel functions     */
+
+int main (int argc, char *argv [])
+{
+    /*  Application is latent - initialise it                   */
+    <A href="smt21.htm#smt_init">smt init</A> ();                   /*  Initialise SMT kernel    */
+    <A href="smt72.htm#smtecho_init">smtecho init</A> (NULL);           /*  Initialise ECHO agent    */
+
+    /*  Application is active - execute it                      */
+    <A href="smt23.htm#smt_exec_full">smt exec full</A> ();              /*  Run until completed      */
+
+    /*  Application is halted - terminate it                    */
+    <A href="smt22.htm#smt_term">smt term</A> ();                   /*  Shut-down SMT kernel     */
+    return (0);
+}
+</PRE>
+
+<P>This main code is the glue that joins the various pieces of the
+application.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt.htm">&lt;</A>
+ | <A href="smt2.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

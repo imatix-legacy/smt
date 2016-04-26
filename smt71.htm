@@ -1,0 +1,70 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtauth_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt70.htm">&lt;</A>
+ | <A href="smt72.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtauth_init">&nbsp;</A>
+<H3><A NAME="TOC117"><TT>smtauth_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int
+smtauth_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT authorisation agent. Returns 0 if
+   initialised okay, -1 if there was an error. Supports these
+   public methods: <TABLE BORDER NOWRAP> <TR><TD
+   ALIGN="LEFT"><B>OPEN</B>  <TD ALIGN="LEFT">Create a protected
+   url symbol table. <TR><TD ALIGN="LEFT"><B>REOPEN</B>  <TD
+   ALIGN="LEFT">Reload authorisation data <TR><TD
+   ALIGN="LEFT"><B>CHECK URL</B>  <TD ALIGN="LEFT">Check if a url
+   is protected. <TR><TD ALIGN="LEFT"><B>CHECK NAME</B>  <TD
+   ALIGN="LEFT">Check user name and password for a url; returns
+   user name. <TR><TD ALIGN="LEFT"><B>CLOSE</B>  <TD
+   ALIGN="LEFT">Free symbol table and end thread. </TABLE> Sends
+   errors to the SMTOPER agent.
+<H4>Source Code - (smtauth.c)</H4>
+<PRE>
+{
+    AGENT  *agent;                      /*  Handle for our agent             */
+    THREAD *thread;                     /*  Handle to console thread         */
+#   include "smtauth.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name   Event value        Priority        */
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",    shutdown_event,    SMT_PRIORITY_MAX);
+
+    /*  Public methods supported by this agent                               */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "OPEN",        open_event,        0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "REOPEN",      reopen_event,      0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "CHECK_URL",   check_url_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "CHECK_NAME",  check_name_event,  0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "CLOSE",       close_event,       0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    <A href="smt78.htm#smtoper_init">smtoper init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_OPERATOR, "")) != NULL)
+        console = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt70.htm">&lt;</A>
+ | <A href="smt72.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

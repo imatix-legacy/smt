@@ -1,0 +1,324 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The Socket I/O Agent - SMTSOCK</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt9.htm">&lt;</A>
+ | <A href="smt11.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="SMTSOCK">&nbsp;</A>
+<H3><A NAME="TOC47">The Socket I/O Agent - SMTSOCK</A></H3>
+
+<P>Handles input and output to TCP and UDP sockets. You should use
+this agent for all access to TCP or UDP sockets, although you can
+also access sockets directly using the SFL socket access
+functions.  Socket i/o is both central to most Internet servers,
+and reasonably delicate, making it a task that is well done by a
+specific agent.
+
+<P>SMTSOCK has two main functions: it acts as the central
+'heartbeat' for an Internet server, and it perform input and
+output on sockets.  The heartbeat function works as follows:
+SMTSOCK uses the select() function to monitor all open sockets.
+Each socket is owned by a thread, somewhere.  When a socket shows
+signs of life, SMTSOCK sends an event to the appropriate thread.
+The thread can then decide to read or write data as required.  In
+a typical Internet application -- such as the XITAMI web server --
+the socket agent is the main source of the events that drive the
+application.  By contrast, in non-Internet applications the
+'heartbeat' role could be played by the timer agent SMTTIME.
+
+<P>The second task for SMTSOCK is input and output on sockets.
+For instance, you can ask SMTSOCK to read data from a socket, or
+to write a block of data to a socket.  Both these tasks can
+require multiple cycles, waiting until the socket is ready, then
+reading/writing as much data as possible, until all the data has
+been read/written.  SMTSOCK handles this automatically.
+
+<P>To use SMTSOCK, call <A href="smt80.htm#smtsock_init">smtsock init</A>().  This creates a single
+unnamed thread automatically the first time it is called, and has
+no effect thereafter.  You can then send messages to this thread.
+SMTSOCK replies to most events.  It supports these methods:
+<UL>
+<LI>READ - read data from a socket.
+<LI>READR - read data from a socket, repeatedly.
+<LI>WRITE - write data to a socket.
+<LI>INPUT - wait for ready for input on a socket.
+<LI>INPUTR - wait for ready for input on a socket, repeatedly.
+<LI>OUTPUT - wait for ready for output on a socket.
+<LI>CONNECT - make connection to specified host and port.
+<LI>FLUSH - cancel any requests on a socket.
+</UL>
+
+<P>Example of initialising SMTSOCK:
+
+<PRE>
+/*  Static data                                                 */
+static QID
+    sockq;                      /*  Socket agent event queue    */
+
+    /*  In agent initialisation code                            */
+    THREAD  *thread;            /*  Handle to various threads   */
+
+    /*  Reply events from socket agent                          */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_INPUT_OK",  ok_event,       0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_OUTPUT_OK", ok_event,       0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_READ_OK",   read_ok_event,  0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_WRITE_OK",  write_ok_event, 0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_CLOSED",    closed_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_ERROR",     error_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_TIMEOUT",   error_event,    0);
+
+    /*  Ensure that socket agent is running, else start it      */
+    <A href="smt80.htm#smtsock_init">smtsock init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_SOCKET, "")) != NULL)
+        sockq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+</PRE>
+
+<H4>The READ Method</H4>
+
+<P>Waits for, and reads data from a socket.  TCP/IP breaks a
+stream of data into chunks of arbitrary size, and each low-level
+read operation will read one such chunk.  Thus, to read a specific
+amount of data, you may need to make several low-level read calls.
+SMTSOCK packages this so that one READ event can read as much data
+as required.  You can alternatively ask SMTSOCK to read just the
+next chunk sent by TCP/IP.  Build the event body using
+exdr_write() and the message definition SMT_SOCK_READ.  The event
+body consists of these fields (see exdr_write() for the field
+types):
+<UL>
+<LI>[d] A timeout, in seconds.  After this timeout, the read
+request will be cancelled.  If zero, no timeout is applied.  Note
+that this is not the same type of timeout as that you can specify
+in <A href="smt41.htm#event_send">event send</A>().
+<LI>[q] The socket to read from.  The socket must be opened and
+connected.
+<LI>[d] The size of the receiving buffer.  The buffer is allocated
+by SMTSOCK, and can be any size up to (almost) 64K bytes.  This is
+the maximum size of the returned data.
+<LI>[d] The minimum amount of data to read, which can be a value
+from one up to the full buffer size.  If zero, the full buffer
+must be read.
+<LI>[q] A user-defined request tag; this is an arbitrary token
+that is returned with reply events.
+</UL>
+SMTSOCK replies to a READ event with one of these events:
+<UL>
+<LI>SOCK_READ_OK - data was read successfully.  Decode the event
+body using exdr_read() and the message definition
+SMT_SOCK_READ_OK. The body contains these fields: [d] timeout in
+seconds from read request; [q] the socket specified for i/o; [mM]
+a block of memory containing the read data; [q] the user-defined
+request tag.  The SMT_SOCK_READ_OK message maps exactly to a
+SMT_SOCK_WRITE message, so that you can perform an 'echo' simply
+by returning the event to SMTSOCK.
+<LI>SOCK_CLOSED - the socket was closed by the peer.  Data may or
+may not have been read.  Decode the event as for SOCK_READ_OK.
+<LI>SOCK_TIMEOUT - the read request timed-out.  Data may or may
+not have been read.  Decode the event as for SOCK_READ_OK.
+<LI>SOCK_ERROR - there was an error on the socket.  Any data read
+is discarded.  Decode the event body using exdr_read() and the
+message definition SMT_SOCK_ERROR.  The body contains these
+fields: [s] a string containing the error message, [q] the socket
+specified for i/o; [q] the user-defined request tag.
+</UL>
+
+<H4>The READR Method</H4>
+
+<P>Works in the same way as the READ method, but works repeatedly
+until a FLUSH is sent for the socket.  The READR method is useful
+for servers that have to loop on reading a socket; it saves the
+need for sending fresh READ events.
+
+<H4>The WRITE Method</H4>
+
+<P>Writes a block of data to a socket.  If you call the low-level
+TCP/IP write function directly, you must handle various error and
+retry conditions.  It is easier and safer to use SMTSOCK to do
+this.  Build the event body using exdr_write() and the message
+definition SMT_SOCK_WRITE.  The event body consists of these
+fields:
+<UL>
+<LI>[d] A timeout, in seconds.  After this timeout, the write
+request will be cancelled.  If zero, no timeout is applied.
+<LI>[q] The socket to write to.  The socket must be opened and
+connected.
+<LI>[mM] The block of data to write, specified as a length and
+memory address.
+<LI>[q] A user-defined request tag; this is an arbitrary token
+that is returned with reply events.
+</UL>
+SMTSOCK replies to a WRITE event with one of these events:
+<UL>
+<LI>SOCK_WRITE_OK - data was written successfully.  Decode the
+event body using exdr_read() and the message definition
+SMT_SOCK_OK. The body contains these fields: [q] the socket
+specified for i/o; [q] the user-defined request tag.
+<LI>SOCK_CLOSED - the socket was closed by the peer.  Data may or
+may not have been written.  Decode the event as for SOCK_READ_OK.
+<LI>SOCK_TIMEOUT - the write request timed-out.  Data may or may
+not have been written.  Decode the event as for SOCK_READ_OK.
+<LI>SOCK_ERROR - there was an error on the socket.  Data may or
+may not have been written.  Decode the event body using
+exdr_read() and the message definition SMT_SOCK_ERROR.  The body
+contains these fields: [q] the socket specified for i/o; [s] a
+string containing the error message; [q] the user-defined request
+tag.
+</UL>
+
+<H4>The INPUT Method</H4>
+
+<P>Waits for input to arrive on a socket.  This can be data, or a
+connection request.  Build the event body using exdr_write() and
+the message definition SMT_SOCK_INPUT.  The event body consists of
+these fields:
+<UL>
+<LI>[d] A timeout, in seconds.  After this timeout, the input
+request will be cancelled.  If zero, no timeout is applied.
+<LI>[q] The socket to wait on.  The socket must be opened and
+ready.
+<LI>[q] A user-defined request tag; this is an arbitrary token
+that is returned with reply events.
+</UL>
+SMTSOCK replies to an INPUT event with one of these events:
+<UL>
+<LI>SOCK_INPUT_OK - data is waiting on the socket.  Decode the
+event body using exdr_read() and the message definition
+SMT_SOCK_OK. The body contains these fields: [q] the socket
+specified for i/o; [q] the user-defined request tag.
+<LI>SOCK_CLOSED - the socket was closed by the peer.  Decode the
+event as for SOCK_READ_OK.
+<LI>SOCK_TIMEOUT - the input request timed-out.  Decode the event
+as for SOCK_READ_OK.
+<LI>SOCK_ERROR - there was an error on the socket.  Decode the
+event body using exdr_read() and the message definition
+SMT_SOCK_ERROR.  The body contains these fields: [q] the socket
+specified for i/o; [s] a string containing the error message; [q]
+the user-defined request tag.
+</UL>
+
+<H4>The INPUTR Method</H4>
+
+<P>Works in the same way as the INPUT method, but works repeatedly
+until a FLUSH is sent for the socket.  The INPUTR method is useful
+for servers that have to loop on waiting for a socket; it saves
+the need for sending fresh INPUT events.
+
+<H4>The OUTPUT Method</H4>
+
+<P>Waits for a socket to be ready for output.  If you use the low-
+level TCP/IP write functions, you must be sure that the socket is
+ready for output, or your thread will block the entire application
+if it has to wait.  Build the event body using exdr_write() and
+the message definition SMT_SOCK_OUTPUT.  The event body consists
+of these fields:
+<UL>
+<LI>[d] A timeout, in seconds.  After this timeout, the output
+request will be cancelled.  If zero, no timeout is applied.
+<LI>[q] The socket to wait on.  The socket must be opened and
+ready.
+<LI>[q] A user-defined request tag; this is an arbitrary token
+that is returned with reply events.
+</UL>
+SMTSOCK replies to an OUTPUT event with one of these events:
+<UL>
+<LI>SOCK_OUTPUT_OK - the socket is ready to receive data.  Decode
+the event body using exdr_read() and the message definition
+SMT_SOCK_OK. The body contains these fields: [q] the socket
+specified for i/o; [q] the user-defined request tag.
+<LI>SOCK_CLOSED - the socket was closed by the peer.  Decode the
+event as for SOCK_READ_OK.
+<LI>SOCK_TIMEOUT - the output request timed-out.  Decode the event
+as for SOCK_READ_OK.
+<LI>SOCK_ERROR - there was an error on the socket.  Decode the
+event body using exdr_read() and the message definition
+SMT_SOCK_ERROR.  The body contains these fields: [q] the socket
+specified for i/o; [s] a string containing the error message; [q]
+the user-defined request tag.
+</UL>
+
+<H4>The CONNECT Method</H4>
+
+<P>Establishes a TCP or UDP connection to some specified host and
+service (or port).  Build the event body using exdr_write() and
+the message definition SMT_SOCK_CONNECT.  The event body consists
+of these fields:
+<UL>
+<LI>[d] A timeout, in seconds.  After this timeout, the output
+request will be cancelled.  If zero, no timeout is applied.
+<LI>[s] The type of connection wanted: "UDP" or "TCP".
+<LI>[s] The host system to connect to, specified as a name or a
+dotted address string, or NULL, meaning the current system.
+<LI>[s] The service to connect to, as a service name or a port
+number in ASCII, or NULL, meaning use the binary port/address
+information below.
+<LI>[d] A 16-bit host port, or 0.
+<LI>[q] A 32-bit host address, or 0.  You can supply either these
+two values, or the host/service strings.  The binary port/address
+data will form a connection faster.
+<LI>[q] A user-defined request tag; this is an arbitrary token
+that is returned with reply events.
+</UL>
+SMTSOCK replies to a CONNECT event with one of these events:
+<UL>
+<LI>SOCK_OUTPUT_OK - the socket is ready for receiving data.
+Decode the event body using exdr_read() and the message definition
+SMT_SOCK_OK. The body contains these fields: [q] the socket
+specified for i/o; [q] the user-defined request tag.
+<LI>SOCK_CLOSED - the socket was closed by the peer.  Decode the
+event as for SOCK_READ_OK.
+<LI>SOCK_TIMEOUT - the output request timed-out.  Decode the event
+as for SOCK_READ_OK.
+<LI>SOCK_ERROR - there was an error on the socket.  Decode the
+event body using exdr_read() and the message definition
+SMT_SOCK_ERROR.  The body contains these fields: [q] the socket
+specified for i/o; [s] a string containing the error message; [q]
+the user-defined request tag.
+</UL>
+
+<H4>The FLUSH Method</H4>
+
+<P>Removes any requests for a socket.  Since events are delivered
+in a straight first-in first-out basis (ignoring the high priority
+SHUTDOWN event) it is safe to send first a FLUSH event, followed
+by another event, with no intervening wait.  Build the event body
+using exdr_write() and the message definition SMT_SOCK_FLUSH.  The
+event body consists of these fields:
+<UL>
+<LI>[q] The socket to flush; all pending requests on this socket
+are removed without further feedback.
+</UL>
+SMTSOCK does not reply to a FLUSH event.
+
+<H4>Example Of Use</H4>
+
+<P>The <A href="smt12.htm#SMTECHO">SMTECHO</A> agent provides a good basic example of using
+<A href="smt10.htm#SMTSOCK">SMTSOCK</A>.  Study this program, and use it as a basis for your
+own socket-based agents.
+
+<H4>Notes and Comments</H4>
+<P>The SOCK_CLOSED and SOCK_TIMEOUT return events can come from
+various requests; to make processing of this possible, they are
+always formatted as SOCK_READ_OK events.
+
+<H4>SMTSOCK Implementation</H4>
+
+<P>The <A HREF="smtsock.htm">hypertext view</A> of SMTSOCK's dialog
+and source code may help to understand how SMTSOCK works.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt9.htm">&lt;</A>
+ | <A href="smt11.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,96 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The Operator Console Agent - SMTOPER</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt6.htm">&lt;</A>
+ | <A href="smt8.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="SMTOPER">&nbsp;</A>
+<H3><A NAME="TOC44">The Operator Console Agent - SMTOPER</A></H3>
+
+<P>Accepts error messages, warnings, and information messages, and
+does something useful (but unspecified) with them.  The current
+implementation writes all received messages to the standard error
+device.
+
+<P>To use SMTOPER, call <A href="smt78.htm#smtoper_init">smtoper init</A>().  This creates a single
+unnamed thread automatically the first time it is called, and has
+no effect thereafter.  You can then send messages to this thread.
+SMTOPER does not reply.  It supports these methods:
+<UL>
+<LI>ERROR - handle serious error message.
+<LI>WARNING - handle warning message.
+<LI>INFO - handle information message.
+<LI>LOG - direct console messages to a log file.
+</UL>
+
+<P>Example of initialising SMTOPER:
+
+<PRE>
+/*  Static data                                                 */
+static QID
+    console;                    /*  Operator console queue      */
+
+    /*  In agent initialisation code                            */
+    THREAD  *thread;            /*  Handle to console thread    */
+    /*  Ensure that operator console is running, else start it  */
+    smtoper_init ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_OPERATOR, "")) != NULL)
+        console = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+</PRE>
+
+<H4>The ERROR Method</H4>
+
+<P>The event body contains a string.  This string is handled as a
+serious error message.  For example:
+
+<PRE>
+    <A href="smt65.htm#sendfmt">sendfmt</A> (&console, "ERROR", "Could not open %s", filename);
+    <A href="smt64.htm#senderr">senderr</A> (&console);
+    <A href="smt66.htm#raise_exception">raise exception</A> (exception_event);
+</PRE>
+
+<H4>The WARNING Method</H4>
+
+<P>The event body contains a string.  This string is handled as a
+non-fatal warning message.  For example:
+
+<PRE>
+    <A href="smt65.htm#sendfmt">sendfmt</A> (&console, "WARNING", "Exceeded connection quota");
+</PRE>
+
+<H4>The INFO Method</H4>
+
+<P>The event body contains a string.  This string is handled as a
+information message.  For example:
+
+<PRE>
+    <A href="smt65.htm#sendfmt">sendfmt</A> (&console, "INFO", "Connection from %s", system);
+</PRE>
+
+<H4>The LOG Method</H4>
+
+<P>The event body contains a string that specifies the name of a
+SMTLOG thread.  All operator output is sent to this thread.
+
+<H4>SMTOPER Implementation</H4>
+
+<P>The <A HREF="smtoper.htm">hypertext view</A> of SMTOPER's dialog
+and source code may help to understand how SMTOPER works.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt6.htm">&lt;</A>
+ | <A href="smt8.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,336 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>Introduction</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="index.htm">&lt;</A>
+ | <A href="smt1.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC1">Introduction</A></H2>
+
+<H3><A NAME="TOC2">Origins</A></H3>
+
+<P>SMT 2.0 is an evolution of SMT version 1.x of the iMatix SMT
+kernel.  SMT 1.x was specifically designed for TCP/IP server
+development.  SMT 2.x is a more generalised approach that makes
+multithreaded FSMs suitable for a variety of purposes.  SMT 2.0 is
+not backwards compatible with SMT 1.x, but it is quite
+straight-forward to convert applications.
+
+<P>The main objectives of SMT 1.0 were:
+<OL>
+<LI>Mulithreading - a cleaner and more efficient approach for
+certain types of problems than alternatives such as
+multiprocessing (forking) or iteration.
+<LI>Simplicity - using the Libero method to simplify an otherwise
+complex multithreaded model.
+<LI>Portability - so that a SMT application runs on UNIX, Windows
+95, Windows NT, and Digital VMS with similar functionality.
+</OL>
+
+<P>SMT 2.0 is meant to answer a wider set of issues. Specifically,
+our goal was to provide multithreading capability in these domains:
+<UL>
+<LI>Internet servers
+<LI>Other communication servers
+<LI>Asynchronous FSM architectures
+<LI>Internally multithreaded (batch) programs
+<LI>GUI-based programs (e.g. Windows)
+</UL>
+
+<P>In SMT 1.x, external events were received and processed by a
+kernel built-in to each SMT program.  The SMT 1.x kernel was
+specifically designed to be driven by TCP/IP events.  An SMT 1.x
+program is invoked, does its work, and finally terminates.  We
+call this type of program a 'batch' program.  This is suitable for
+servers ('daemons'), but not for real-time programs that must be
+integrated into an large-scale event-driven architecture.
+
+<P>SMT 2.x is designed as an event-passing kernel.  The
+application consists of a number of agent programs, each running
+one or more threads.  Each thread has an event queue.  Threads
+send each other events, which are queued, and delivered by the
+kernel to the state machine that controls each thread.  The SMT
+kernel API lets you send and receive events, create threads, etc.
+There are various ways to construct an agent program (single-
+threaded, multithreaded), and different ways to handle event
+queues (one thread per queue, or several threads per queue).
+Agents and events can have priorities, which changes the order of
+execution and delivery.
+
+<P>SMT provides a number of standard agents that are easily reused
+in applications.  For example, in an Internet application, the
+socket i/o agent collects events from the Internet sockets used by
+the application.  When a thread wants to read data from a socket,
+it sends an event to the socket i/o agent, telling it which port,
+and how much data.  The socket i/o agent reads the data and
+returns that as a event.  Other standard agents are: a logging
+agent to write log file data; an operator console agent to handle
+error and warning events; a timer agent to generate alarm
+events.<P>  <P>SMT also includes a number of protocol agents for
+use in SMT applications: echo, HTTP, FTP.
+
+<P>In SMT 1.x, external events such as TCP/IP events were
+collected by the kernel, in SMT 2.x such events are collected by
+an agent program.  Thus it is possible to add support to any
+external event source.
+
+<H3><A NAME="TOC3">Classic Multithreading Environments</A></H3>
+
+<P>Multithreaded programming is often perceived as complicated.
+When we look at multithreading facilities provided by existing
+operating systems, we tend to agree. The most common type of
+multithreading is <EM>pre-emptive multithreading</EM>.  This is
+typically seen on UNIX and Windows NT systems.  The
+characteristics of this approach are:
+<UL>
+<LI>The multithreading system (or operating system) switches
+between threads arbitrarily.  This is 'pre-emptive'.
+<LI>The thread program looks like standard procedural code.
+<LI>Threads communicate using <EM>semaphores</EM>: when one thread
+must wait for another, it sets a semaphore and then waits until
+the second thread resets the semaphore.
+<LI>Threads can access shared resources by using semaphores, or by
+defining <EM>critical sections</EM>.  A critical section is a
+block of code that executes entirely, without a thread
+switch.
+<LI>I/O is handled in critical sections.
+</UL>
+
+<P>A less common type of multithreading is <EM>cooperative
+multithreading</EM>.  One example is the <EM>chained
+multithreading</EM> method used on Digital VMS systems.  The
+characteristics of this approach are:
+<UL>
+<LI>Each thread decides when to return control to the
+multithreading system or operating system.
+<LI>The thread program consists of a chain of small blocks of
+code.
+<LI>Threads can communicate using semaphores.
+<LI>Threads can access shared resources at any time - threads
+always execute as if in a critical section.
+<LI>I/o is handled asynchronously: i/o operations are usually the
+basic unit of logic in a thread.  Each block of code in a thread
+requests an i/o operation, and specifies the successor block.
+</UL>
+
+<P>If we compare these methods, we can see advantages and
+disadvantages in each:
+<UL>
+<LI>The chained method is much harder to program.
+<LI>The chained method can produce much more efficient programs,
+especially if they are i/o bound.
+<LI>The pre-emptive method requires extra work to define critical
+sections; it is not fail-safe.  By forgetting to define a critical
+section, a program may work one day, then fail another time.  The
+chained method does not require critical sections.
+</UL>
+
+<P>Both these methods are expensive to program, and can produce
+code that is hard to maintain, error-prone, and therefore very
+expensive to make robust enough for real applications.
+
+<H3><A NAME="TOC4">The History Of Libero Multithreading</A></H3>
+
+<P>In 1990, <A href="mailto:leif@ibm.net">Leif Svalgaard</A> wrote a tiny multitasking
+monitor for MS-DOS, to demonstrate that multitasking did not
+require megabytes of memory.  This monitor was based on an
+event-passing kernel.  It worked well and could multitask several
+DOS sessions simply and efficiently.  This project was remarkable
+because it took a very short time to write (one long weekend) and
+because it required so little memory to run (several kilobytes).
+This monitor was based on Leif Svalgaard's earlier work in
+operating systems design, and defined the core principles of the
+SMT 2.x kernel.
+
+<P>In 1993, Pieter Hintjens developed a complex multithreaded
+application using the Digital VMS chained multithreading method.
+Under severe time constraints, he was obliged to take a radical
+alternative to the normal approach.  He used Libero to abstract
+the 'chain' of multithreaded logic.  This reduced the development
+cost by an estimated 80%, and resulted in a very stable and
+efficient application.  This experience showed that the Libero
+state-machine abstraction - already useful for writing normal
+procedural code - was also good in multithreaded applications.
+
+<P>In 1993, Christian Rozet and Stephen Bidoul of ACSE built a
+version of Libero that generated a C++ 'asynchronous finite-state
+machine' to handle events coming from a GUI (MS-Windows).  The
+resulting applications were in effect multithreaded applications,
+with the multithreading handled by Libero (actually the code that
+Libero generated).
+
+<P>In 1995, Pieter Hintjens and Pascal Antonnaux built SMT version
+1.0, and a set of demonstration programs.  The <EM>smthttpd</EM>
+web server ran on UNIX and Windows 95, showing that portable
+multitasking was a realistic objective.
+
+<P>SMT 2.0 is a fresh approach that combines the experience of
+these projects:
+<UL>
+<LI>It is built on an event-based kernel that integrates smoothly
+into the event-driven state machine inside each program.
+<LI>It uses Libero to abstract the multithreading logic, so that
+the application program is easy to write and maintain.
+<LI>It can be oriented towards socket i/o (important for Internet
+server programs), towards Windows event handling, or towards any
+other event source.
+</UL>
+
+<H3><A NAME="TOC5">Differences with Classic Multithreading</A></H3>
+
+<P>The main differences between SMT and 'classic' multithreading
+are:
+<UL>
+<LI>Multithreading works at the user level, not the kernel level.
+This is sometimes called 'internal multithreading' or 'pseudo-
+multithreading'.  User-level multithreading is transparent to the
+operating system, and can be 100% portable (as it is in SMT).
+<LI>SMT cannot make direct use of multiple CPUs, since threads are
+not visible to the operating system.
+<LI>Threads communicate with events as well as with semaphores.
+This is a clean abstraction that lets you design an
+object-oriented application.
+<LI>SMT is simpler to use.
+<LI>SMT is portable to (almost) any operating system and
+programming language, although the primary implementation is in
+ANSI C.
+</UL>
+
+<P>We note some other points of interest:
+<UL>
+<LI>Thread switching occurs only between dialog action modules.  A
+single dialog module will always run to completion.  Thus, threads
+can share resources (data, files,...) without locking, critical
+sections, or other special safeguards.
+<LI>SMT provides a high-level framework for constructing real
+applications.  This is useful even without the multithreading
+aspects.
+<LI>SMT uses asynchronous or non-blocking i/o as far as possible
+- for Internet sockets and file access.  This results in efficient
+applications that can handle large numbers of connections with a
+low overhead per connection.
+</UL>
+
+<H3><A NAME="TOC6">Why Use Multithreading?</A></H3>
+
+<P>We will consider two specific problems.  Firstly, construction
+of an industrial-scale Internet server.  Secondly, construction of
+a multi-level finite-state machine application.
+
+<P>There are many different ways to design an Internet server.
+The main problem is to handle multiple connections at once
+('concurrency').  The classic way to get concurrency is to use the
+operating system multitasking functions.  This is straight-forward
+enough.  For instance, under UNIX, the server process uses the
+fork() system call to create a 'clone' of itself. At any moment
+there are multiple copies of the server process, each handling one
+connection.  The operating system switches rapidly between these
+processes, so giving concurrency.
+
+<P>The problems with this design become apparent when you try to
+use it for large-scale work.  Firstly, it is not portable - the
+fork() system call does not work on all operating systems.
+Secondly, each fork() call duplicates the server program in
+memory.  This duplication takes a certain time, as does the
+eventual removal of the server process.  A protocol like HTTP
+creates a large number of short-term connections.  Lastly, each
+additional instance of the server process consumes system
+resources so that a typical system cannot handle more than a few
+hundred connections.
+
+<P>There are variations on this design that eliminate some of the
+problems.  For instance, you can create a fixed number of
+instances of the server beforehand, then allow that number of
+connections.  This eliminates the cost of creating and removing
+server processes, but does not raise the ceiling on the maximum
+number of connections.
+
+<P>A more sophisticated approach is to handle multiple connections
+within a single process.  This is relatively simple to arrange,
+using the BSD socket select() function.  This lets a program wait
+for activity on a set of open sockets.  The logic of such a
+program is: wait for activity on a socket; handle the activity;
+repeat.  This approach works when the logic of 'handle the
+activity' is simple.  In realistic applications, however, this
+logic becomes complex, and involves activity such as reading or
+writing to files, or manipulating several sockets at once.
+
+<P>The SMT kernel uses the last approach, but provides a level of
+abstraction that makes the approach practical for large-scale
+problems.  You can create one or several 'threads'.  Each thread
+executes a copy of the finite state machine.  The basic unit of
+logic in a thread is the code module.
+
+<P>The number of threads is limited only by the memory available
+to the process.  Creating or removing a thread is fast (so a new
+connection can be established faster than using a fork() call),
+and as far as the operating system is concerned, there is just one
+process (so the cost to the operating system is lower).
+
+<P>Let's consider the design of an application that consists of
+several interworking state machines.  This is the kind of design
+one finds in telecommunications and other specialised domains.
+The approach can be used in many areas.  Typically, such a state
+machines processes an event queue; one state machine can send
+events to another.
+
+<P>In this type of design we need to save the 'state' of each
+state machine in some way so that it can process events in a
+meaningful manner.  The 'state' consists of the actual state, the
+last event, and context information that the state machine program
+needs to remember between events.  We can define this 'state' as a
+thread: the requirements are very close to that of the Internet
+server described above.  If we only want a single thread in any
+state machine, we can consider this a special case of the general
+case, which is a full multithreaded approach.
+
+<P>Our conclusion from these two chains of argument is that a
+state-machine approach to multithreading is useful and valuable in
+real applications.  Since Libero already provides a state-machine
+abstraction that converts a state-machine diagram into generated
+code, it is reasonable to use this mechanism to implement a
+generic and portable type of multithreading.
+
+<P>The SMT 2.x kernel works with a specific Libero code generation
+schema, smtschm.c, to provide this generic multithreading.
+
+<H3><A NAME="TOC7">What You Should Know</A></H3>
+
+<P>If you intend to write Internet servers, you should have a
+basic understanding of the concepts behind IP, TCP/IP, and UDP/IP.
+While the SMT kernel does a good job of packaging and abstracting
+the Internet programming model, it is no substitute for a solid
+understanding of the issues involved.  We recommend that you be
+familiar with these aspects at least:
+<UL>
+<LI>The differences between TCP/IP and UDP/IP.
+<LI>How TCP and UDP socket connections work.
+<LI>The BSD socket programming interface.
+</UL>
+The SFL socket functions provide the main abstraction layer; for
+instance you will not need to consider system-specific issues such
+as the WINSOCK interface.
+
+<P>Before designing or writing an SMT application you should
+understand the Libero method of program design.  The main
+components of an SMT application - the agents - are designed and
+written using Libero.
+
+<P>Before writing SMT applications you should be familiar with the
+standard function library (SFL), since many SFL functions are used
+in a typical SMT application.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="index.htm">&lt;</A>
+ | <A href="smt1.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

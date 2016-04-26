@@ -1,0 +1,65 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>queue_lookup</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt36.htm">&lt;</A>
+ | <A href="smt38.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="queue_lookup">&nbsp;</A>
+<H3><A NAME="TOC83"><TT>queue_lookup</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+QUEUE *
+queue_lookup (
+    const QID *qid                      /*  Queue to find                    */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Returns a pointer to the queue information block for the
+   specified queue handle. You can change the max_events field,
+   but you should not change the other fields in the queue
+   information block. In case of error, returns NULL and sets
+   smt_errno to one of these values: <TABLE BORDER NOWRAP> <TR><TD
+   ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD ALIGN="LEFT">smt_init()
+   was not called, or failed <TR><TD ALIGN="LEFT"><B>SMT
+   NOSUCHQUEUE</B>  <TD ALIGN="LEFT">The event queue is not
+   defined </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    SYMBOL  *dict_entry;                /*  Queue entry in dictionary        */
+
+#if (defined (SMT_TRACE))
+    trace ("queue_lookup");
+#endif
+    ASSERT (qid);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (NULL);
+      }
+
+    dict_entry = sym_lookup_symbol (dict, get_queue_name (qid));
+    if (dict_entry)
+        return (dict_entry-&gt; data);
+    else
+      {
+        smt_errno = SMT_NOSUCHQUEUE;
+        return (NULL);
+      }
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt36.htm">&lt;</A>
+ | <A href="smt38.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

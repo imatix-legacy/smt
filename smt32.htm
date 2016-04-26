@@ -1,0 +1,73 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>agent_destroy</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt31.htm">&lt;</A>
+ | <A href="smt33.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="agent_destroy">&nbsp;</A>
+<H3><A NAME="TOC78"><TT>agent_destroy</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+agent_destroy (
+    AGENT *agent                        /*  Agent to destroy; null = all     */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Destroys the agent. Returns 0 when completed. The agent
+   argument points to an agent block, or is null. If null, all
+   agents are destroyed. Returns 0 when completed normally, else
+   returns -1 and sets smt_errno to one of these values: <TABLE
+   BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD
+   ALIGN="LEFT">smt_init() was not called, or failed </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+#if (defined (SMT_TRACE))
+    trace ("agent_destroy: agent=%s", agent? agent-&gt; name: "ALL");
+#endif
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (-1);
+      }
+
+    if (agent == NULL)                  /*  Destroy all agents if wanted     */
+        while (agents.next != &amp;agents)
+            <A href="smt32.htm#agent_destroy">agent destroy</A> (agents.next);
+    else                                /*  Else destroy this agent          */
+      {
+        /*   Destroy all queues and methods declared for the agent           */
+        while (agent-&gt; queues.next != &amp;agent-&gt; queues)
+            <A href="smt38.htm#queue_destroy">queue destroy</A> (agent-&gt; queues.next);
+        while (agent-&gt; methods.next != &amp;agent-&gt; methods)
+            <A href="smt35.htm#method_destroy">method destroy</A> (agent-&gt; methods.next);
+
+        /*  We have to be a little careful or sym_delete_symbol () will      */
+        /*  try to release the symbol's data area; the data area points      */
+        /*  to our node, which we want to release ourselves.                 */
+        agent-&gt; symbol-&gt; data = NULL;
+        sym_delete_symbol (dict, agent-&gt; symbol);
+
+        /*  Now delete the agent                                             */
+        mem_strfree (&amp;agent-&gt; name);    /*  First we take its name           */
+        node_destroy (agent);           /*  ... then we take its life        */
+      }
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt31.htm">&lt;</A>
+ | <A href="smt33.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,86 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>thread_destroy</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt50.htm">&lt;</A>
+ | <A href="smt52.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="thread_destroy">&nbsp;</A>
+<H3><A NAME="TOC97"><TT>thread_destroy</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+thread_destroy (
+    THREAD *thread,                     /*  Thread to destroy                */
+    Bool    cleanup                     /*  Delete queue if last thread      */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Destroys the thread. If this was the last instance of a router
+   thread, destroys the parent queue as well, if the cleanup
+   argument is TRUE. Returns 0 if successfully completed, else
+   returns -1 and sets smt_errno to one of these values: <TABLE
+   BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD
+   ALIGN="LEFT">smt_init() was not called, or failed </TABLE>
+   Removes the thread from the active list if it was attached
+   there. Destroys any event allocated for the thread.
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Agent information block          */
+    QUEUE   *queue;                     /*  Queue information block          */
+
+#if (defined (SMT_TRACE))
+    trace ("thread_destroy: thread=%s", thread-&gt; name);
+#endif
+    ASSERT (thread);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (-1);
+      }
+
+    queue = thread-&gt; queue;             /*  Get parents for thread           */
+    agent = queue-&gt; agent;
+
+    /*  We have to be a little careful or sym_delete_symbol () will          */
+    /*  try to release the symbol's data area; the data area points          */
+    /*  to our node, which we want to release ourselves.                     */
+    thread-&gt; symbol-&gt; data = NULL;
+    sym_delete_symbol (dict, thread-&gt; symbol);
+
+    /*  Destroy event for the thread, if we still need to                    */
+    if (thread-&gt; event)                 /*  NULL = no event for thread       */
+        <A href="smt47.htm#event_destroy">event destroy</A> (thread-&gt; event);
+
+    /*  Delete the thread                                                    */
+    thread_unlink (thread);             /*  Remove thread from active        */
+    mem_free (thread-&gt; tcb);            /*  Free allocated TCB,              */
+    mem_free (thread-&gt; LR_stack);       /*    and sub-dialog stack           */
+    mem_strfree (&amp;thread-&gt; name);
+    node_destroy (thread);
+
+    /*  Destroy queue if last thread, and we are asked to clean-up           */
+    if (queue-&gt; threads.next == &amp;queue-&gt; threads &amp;&amp; cleanup)
+        <A href="smt38.htm#queue_destroy">queue destroy</A> (queue);
+
+    ASSERT (agent-&gt; cur_threads &gt; 0);
+    agent-&gt; cur_threads--;
+    cur_threads--;                      /*  Keep count of threads            */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt50.htm">&lt;</A>
+ | <A href="smt52.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

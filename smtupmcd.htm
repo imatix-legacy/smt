@@ -1,0 +1,165 @@
+<HTML>
+<BODY BACKGROUND="newstone.gif">
+<H1>smtupmc.l</H1>
+<HR>
+<PRE>
+!----------------------------------------------------------------------------
+!   Name:       smtupmc.l
+!   Title:      Dialog for UPM client agent
+!   Package:    Libero SMT 2.x
+!
+!   Written:    1996/09/06  iMatix SMT kernel team <A HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+!   Revised:    1997/09/08
+!
+!   Copyright:  Copyright (c) 1991-2000 iMatix Corporation
+!   License:    This is free software; you can redistribute it and/or modify
+!               it under the terms of the SMT License Agreement as provided
+!               in the file LICENSE.TXT.  This software is distributed in
+!               the hope that it will be useful, but without any warranty.
+!----------------------------------------------------------------------------
+-schema=smtschm.c
+
+<A NAME="afterinit">After-Init</A>:
+    (--) Ok                                 -&gt; <A HREF="#haveconnection">Have-Connection</A>
+          + <A HREF="smtupmcs.htm#connecttoupmdaemon" TARGET="source">Connect-To-Upm-Daemon</A>
+    (--) Error                              -&gt;
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="haveconnection">Have-Connection</A>:
+    (--) Ok                                 -&gt; <A HREF="#makingconnection">Making-Connection</A>
+          + <A HREF="smtupmcs.htm#storeconnectiondata" TARGET="source">Store-Connection-Data</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+
+<A NAME="makingconnection">Making-Connection</A>:
+    (--) Upm-Ready                          -&gt; <A HREF="#usercommand">User-Command</A>
+          + <A HREF="smtupmcs.htm#signalconnectedokay" TARGET="source">Signal-Connected-Okay</A>
+          + <A HREF="smtupmcs.htm#getusercommandinput" TARGET="source">Get-User-Command-Input</A>
+
+<A NAME="daemonmessage">Daemon-Message</A>:
+    (--) Upm-Ready                          -&gt; <A HREF="#usercommand">User-Command</A>
+          + <A HREF="smtupmcs.htm#getusercommandinput" TARGET="source">Get-User-Command-Input</A>
+    (--) Upm-Task-Id                        -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#showtaskname" TARGET="source">Show-Task-Name</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Upm-Start-Ok                       -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#signaltaskstartedok" TARGET="source">Signal-Task-Started-Ok</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Upm-Start-Error                    -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#signaltasknotstarted" TARGET="source">Signal-Task-Not-Started</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Upm-Stop-Ok                        -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#signaltaskstoppedok" TARGET="source">Signal-Task-Stopped-Ok</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Upm-Stop-Error                     -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#signaltasknotstopped" TARGET="source">Signal-Task-Not-Stopped</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Upm-Task-Nf                        -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#signaltasknotknown" TARGET="source">Signal-Task-Not-Known</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Upm-Task-Running                   -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#signaltaskrunning" TARGET="source">Signal-Task-Running</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Upm-Task-Stopped                   -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#signaltaskstopped" TARGET="source">Signal-Task-Stopped</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+
+<A NAME="usercommand">User-Command</A>:
+    (--) List                               -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#senddaemonlistcommand" TARGET="source">Send-Daemon-List-Command</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Stop                               -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#senddaemonstopcommand" TARGET="source">Send-Daemon-Stop-Command</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Start                              -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#senddaemonstartcommand" TARGET="source">Send-Daemon-Start-Command</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Status                             -&gt; <A HREF="#daemonmessage">Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#senddaemonstatuscommand" TARGET="source">Send-Daemon-Status-Command</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Halt                               -&gt; <A HREF="#daemonhalting">Daemon-Halting</A>
+          + <A HREF="smtupmcs.htm#senddaemonhaltcommand" TARGET="source">Send-Daemon-Halt-Command</A>
+          + <A HREF="smtupmcs.htm#getdaemonmessage" TARGET="source">Get-Daemon-Message</A>
+          + <A HREF="smtupmcs.htm#checkdaemonmessage" TARGET="source">Check-Daemon-Message</A>
+    (--) Version                            -&gt; <A HREF="#usercommand">User-Command</A>
+          + <A HREF="smtupmcs.htm#showversioninformation" TARGET="source">Show-Version-Information</A>
+          + <A HREF="smtupmcs.htm#getusercommandinput" TARGET="source">Get-User-Command-Input</A>
+    (--) Help                               -&gt; <A HREF="#usercommand">User-Command</A>
+          + <A HREF="smtupmcs.htm#showhelpinformation" TARGET="source">Show-Help-Information</A>
+          + <A HREF="smtupmcs.htm#getusercommandinput" TARGET="source">Get-User-Command-Input</A>
+    (--) Exit                               -&gt;
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Empty                              -&gt; <A HREF="#usercommand">User-Command</A>
+          + <A HREF="smtupmcs.htm#getusercommandinput" TARGET="source">Get-User-Command-Input</A>
+    (--) Error                              -&gt; <A HREF="#usercommand">User-Command</A>
+          + <A HREF="smtupmcs.htm#signalinvalidcommand" TARGET="source">Signal-Invalid-Command</A>
+          + <A HREF="smtupmcs.htm#getusercommandinput" TARGET="source">Get-User-Command-Input</A>
+
+<A NAME="daemonhalting">Daemon-Halting</A>:
+    (--) Upm-Halting                        -&gt;
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="defaults">Defaults</A>:
+    (--) Sock-Closed                        -&gt;
+          + <A HREF="smtupmcs.htm#signalsocketclosed" TARGET="source">Signal-Socket-Closed</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Sock-Error                         -&gt;
+          + <A HREF="smtupmcs.htm#signalsocketerror" TARGET="source">Signal-Socket-Error</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Ready                          -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Error                          -&gt;
+          + <A HREF="smtupmcs.htm#signalupmfatalerror" TARGET="source">Signal-Upm-Fatal-Error</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Halting                        -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Task-Id                        -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Task-Ok                        -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Task-Nf                        -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Task-Running                   -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Task-Stopped                   -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Start-Ok                       -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Start-Error                    -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Stop-Ok                        -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Upm-Stop-Error                     -&gt;
+          + <A HREF="smtupmcs.htm#signalunexpectedmessage" TARGET="source">Signal-Unexpected-Message</A>
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Exception                          -&gt;
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Shutdown                           -&gt;
+          + <A HREF="smtupmcs.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+</PRE>
+<HR>
+<P>Generated by <A HREF="http://www.imatix.com">
+Framer 1.0 &#169; 1997 iMatix</A></P>
+</BODY></HTML>

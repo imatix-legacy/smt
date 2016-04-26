@@ -1,0 +1,251 @@
+<HTML>
+<BODY BACKGROUND="newstone.gif">
+<H1>smtauth.c</H1>
+<HR>
+<PRE>
+/*  ----------------------------------------------------------------&lt;Prolog&gt;-
+    Name:       smtauth.c
+    Title:      SMT Authorisation agent
+    Package:    Libero SMT 2.x
+
+    Written:    1996/07/31  iMatix SMT kernel team <A HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+    Revised:    1997/09/08
+
+    Synopsis:   Check if url is protected and verify user name and password.
+
+    Copyright:  Copyright (c) 1991-2000 iMatix Corporation
+    License:    This is free software; you can redistribute it and/or modify
+                it under the terms of the SMT License Agreement as provided
+                in the file LICENSE.TXT.  This software is distributed in
+                the hope that it will be useful, but without any warranty.
+ ------------------------------------------------------------------&lt;/Prolog&gt;-*/
+
+#include "smtdefn.h"                    /*  SMT definitions                  */
+
+
+/*- Definitions -------------------------------------------------------------*/
+
+#define AGENT_NAME   SMT_AUTH           /*  Our public name                  */
+
+typedef struct                          /*  Thread context block:            */
+{
+    SYMTAB *authtable;                  /*    Authorisations table           */
+} TCB;
+
+
+/*- Local function prototypes -----------------------------------------------*/
+
+static Bool url_is_protected (SYMTAB *symtab, char *directory);
+
+
+/*- Global variables used in this source file only --------------------------*/
+
+static TCB
+    *tcb;                               /*  Address thread context block     */
+static QID
+    console;                            /*  Operator console event queue     */
+
+
+#include "smtauth.d"                    /*  Include dialog data              */
+
+/********************   INITIALISE AGENT - ENTRY POINT   ********************/
+
+
+/*  ---------------------------------------------------------------------[&lt;]-
+    Function: smtauth_init
+
+    Synopsis: Initialises the SMT authorisation agent.  Returns 0 if
+    initialised okay, -1 if there was an error.
+    Supports these public methods:
+    &lt;Table&gt;
+    OPEN        Create a protected url symbol table.
+    REOPEN      Reload authorisation data
+    CHECK_URL   Check if a url is protected.
+    CHECK_NAME  Check user name and password for a url; returns user name.
+    CLOSE       Free symbol table and end thread.
+    &lt;/Table&gt;
+    Sends errors to the SMTOPER agent.
+    ---------------------------------------------------------------------[&gt;]-*/
+
+int
+smtauth_init (void)
+{
+    AGENT  *agent;                      /*  Handle for our agent             */
+    THREAD *thread;                     /*  Handle to console thread         */
+#   include "smtauth.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name   Event value        Priority        */
+    /*  Shutdown event comes from Kernel                                     */
+    method_declare (agent, "SHUTDOWN",    shutdown_event,    SMT_PRIORITY_MAX);
+
+    /*  Public methods supported by this agent                               */
+    method_declare (agent, "OPEN",        open_event,        0);
+    method_declare (agent, "REOPEN",      reopen_event,      0);
+    method_declare (agent, "CHECK_URL",   check_url_event,   0);
+    method_declare (agent, "CHECK_NAME",  check_name_event,  0);
+    method_declare (agent, "CLOSE",       close_event,       0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    smtoper_init ();
+    if ((thread = thread_lookup (SMT_OPERATOR, "")) != NULL)
+        console = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+
+
+/*************************   <A NAME="initialisethethread">INITIALISE THE THREAD</A>   *************************/
+
+MODULE initialise_the_thread (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    tcb-&gt; authtable = NULL;
+    the_next_event  = ok_event;
+}
+
+
+/************************   <A NAME="openauthorisationfile">OPEN AUTHORISATION FILE</A>   ************************/
+
+MODULE open_authorisation_file (THREAD *thread)
+{
+    char
+        *file_name;
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Event body or thread name supplies name for the file                 */
+    if (thread-&gt; event-&gt; body && strused (thread-&gt; event-&gt; body))
+        file_name = (char *) thread-&gt; event-&gt; body;
+    else
+        file_name = thread-&gt; name;
+
+    /*  Load authorisation data into symbol table                            */
+    tcb-&gt; authtable = ini_dyn_load (NULL, file_name);
+    if (tcb-&gt; authtable == NULL)
+      {
+        sendfmt (&console, "ERROR", "Could not load authorisation table");
+        senderr (&console);
+        raise_exception (exception_event);
+        return;
+      }
+}
+
+
+/*************************   <A NAME="checkifurlprotected">CHECK IF URL PROTECTED</A>   ************************/
+
+MODULE check_if_url_protected (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    strlwc ((char *) thread-&gt; event-&gt; body);
+    if (url_is_protected (tcb-&gt; authtable, (char *) thread-&gt; event-&gt; body))
+        SEND (&thread-&gt; event-&gt; sender, "PRIVATE", "");
+    else
+        SEND (&thread-&gt; event-&gt; sender, "PUBLIC", "");
+}
+
+/*  url_is_protected -- internal
+ *
+ *  Looks for specified directory name in authorisation table.  Searches
+ *  for the most specific directory first, by successively removing path
+ *  segments from the right.  Eg. if asked to look for "/pub/mypages/file"
+ *  will look for "pub/mypages", then "pub".  Returns TRUE if the directory
+ *  is defined in the authorisation table, and modifies the directory value
+ *  to match the defined value.
+ */
+
+static Bool
+url_is_protected (SYMTAB *symtab, char *directory)
+{
+    char
+        *slash;                         /*  Position of last '/' in name     */
+
+    strlwc (directory);                 /*  All searches in lowercase        */
+    if (*directory == '/')              /*  Remove leading slash if any      */
+        memmove (directory, directory + 1, strlen (directory));
+
+    while ((slash = strrchr (directory, '/')) != NULL)
+      {
+        *slash = '\0';
+        if (sym_lookup_symbol (symtab, directory))
+            return (TRUE);
+      }
+    return (FALSE);
+}
+
+
+/****************************   <A NAME="checkusername">CHECK USER NAME</A>   ****************************/
+
+MODULE check_user_name (THREAD *thread)
+{
+    char
+        *url_name   = NULL,             /*  Arguments from calling agent     */
+        *user_name  = NULL,
+        *password   = NULL,
+        *url_password,                  /*  Required password for URL        */
+        *reply_event;
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    exdr_read (thread-&gt; event-&gt; body, SMT_AUTH_USER,
+               &url_name, &user_name, &password);
+    if (url_is_protected (tcb-&gt; authtable, url_name))
+      {
+        url_password = ini_dyn_value (tcb-&gt; authtable, url_name,
+                                      user_name, NULL);
+        if (strnull (user_name))        /*  No name supplied - no access     */
+            reply_event = "PRIVATE";
+        else                            /*  Check whether password matches   */
+        if (url_password && streq (password, url_password))
+            reply_event = "PUBLIC";
+        else
+            reply_event = "PRIVATE";
+      }
+    else
+        reply_event = "PUBLIC";         /*  Not protected                    */
+
+    SEND (&thread-&gt; event-&gt; sender, reply_event, "");
+    mem_free (url_name);                /*  Free allocated strings           */
+    mem_free (user_name);
+    mem_free (password);
+}
+
+
+/**************************   <A NAME="replynotprotected">REPLY NOT PROTECTED</A>   **************************/
+
+MODULE reply_not_protected (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    SEND (&thread-&gt; event-&gt; sender, "PUBLIC", "");
+}
+
+
+/************************   <A NAME="closeauthorisationfile">CLOSE AUTHORISATION FILE</A>   ***********************/
+
+MODULE close_authorisation_file (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; authtable)
+        sym_delete_table (tcb-&gt; authtable);
+}
+
+
+/*************************   <A NAME="terminatethethread">TERMINATE THE THREAD</A>   **************************/
+
+MODULE terminate_the_thread (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    the_next_event = terminate_event;
+}
+</PRE>
+<HR>
+<P>Generated by <A HREF="http://www.imatix.com">
+Framer 1.0 &#169; 1997 iMatix</A></P>
+</BODY></HTML>

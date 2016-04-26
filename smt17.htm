@@ -1,0 +1,200 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>Installing The SMT Kernel</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt16.htm">&lt;</A>
+ | <A href="smt18.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="download">&nbsp;</A>
+
+<H2><A NAME="TOC58">Installing The SMT Kernel</A></H2>
+
+<H3><A NAME="TOC59">Availability and Distribution</A></H3>
+
+<P>We supply the SMT kernel as two archives: a source kit and a
+documentation kit (in HTML).  These files are available for
+download by HTTP from our <A href="http://www.imatix.com/">website</A> on a permanent basis.
+You need to recompile the SMT for your specific system, using an
+ANSI C compiler.  We don't provide binary kits.
+
+<P>To install and use the SMT kernel you must first install the
+<A href="/html/sfl/">SFL package</A>.  SMT requires the current version of the
+SFL.  To write SMT programs you also need to install the
+<A href="/html/libero/">Libero</A> tool.
+
+<H4>Getting The Source Archive</H3>
+
+<P>The SMT source archive is supplied as a <A href="/pub/smt/src/smtsrc28.zip">zip file</A>
+and a <A href="/pub/smt/src/smtsrc28.tgz">GNU gzipped tar file</A>.  Note that the zipped files
+are in MS-DOS format (carriage-return, linefeed) while the gzip+tar
+file is in UNIX format (linefeed only).  The unzip command allows
+you to extract correctly for the system you are running on.
+These are the files in the /pub/smt/src directory:
+<PRE>
+<A href="/pub/smt/src/smtsrc27.tgz">smtsrc27.tgz </A>   506536 100/04/01 16:17:32  Gzip/tar archive
+<A href="/pub/smt/src/smtsrc27.zip">smtsrc27.zip </A>   649300 100/04/01 16:17:32  ZIP archive
+<A href="/pub/smt/src/smtsrc28.tgz">smtsrc28.tgz </A>   568875 99/08/08 12:05:32  Gzip/tar archive
+<A href="/pub/smt/src/smtsrc28.zip">smtsrc28.zip </A>   768325 99/12/30 14:08:55  ZIP archive
+</PRE>
+
+<P>If you have trouble accessing the iMatix site, send us an
+<A href="mailto:info@imatix.com">e-mail</A> and we'll send you the SMT archives by return
+e-mail.
+
+<H4>Getting The The Documentation Kit</H3>
+
+<P>The SMT documentation is supplied as HTML files, available
+on-line or off-line as a <A href="/pub/smt/doc/smtdoc28.zip">single .zip file</A> that
+you can install on a hard disk for rapid access, and also as
+a <A href="/pub/smt/doc/smtdoc28.tgz">gzipped tar file</A>.  These are the files in the
+/pub/smt/doc directory:
+<PRE>
+<A href="/pub/smt/doc/smtbig27.tgz">smtbig27.tgz </A>    80744 100/04/01 16:17:33  Gzip/tar archive
+<A href="/pub/smt/doc/smtbig27.zip">smtbig27.zip </A>    80860 100/04/01 16:17:33  ZIP archive
+<A href="/pub/smt/doc/smtbig28.tgz">smtbig28.tgz </A>    80419 99/08/08 12:05:38  Gzip/tar archive
+<A href="/pub/smt/doc/smtbig28.zip">smtbig28.zip </A>    80592 99/08/08 12:04:52  ZIP archive
+<A href="/pub/smt/doc/smtdoc27.tgz">smtdoc27.tgz </A>   168262 100/04/01 16:17:33  Gzip/tar archive
+<A href="/pub/smt/doc/smtdoc27.zip">smtdoc27.zip </A>   286443 100/04/01 16:17:32  ZIP archive
+<A href="/pub/smt/doc/smtdoc28.tgz">smtdoc28.tgz </A>   168362 99/08/08 12:05:50  Gzip/tar archive
+<A href="/pub/smt/doc/smtdoc28.zip">smtdoc28.zip </A>   286546 99/08/08 12:04:52  ZIP archive
+</PRE>
+
+<P>We recommend that you unzip or gunzip/detar the documentation
+archive into a subdirectory.  Then, point your browser at the
+<TT>index.htm</TT> file to access the documentation.  We use
+relative addressing in all HTML documents, so that links work just
+as well on a local hard-disk (without a web server) as on-line on
+our website.  In a windowing environment is it easy and useful to
+create an icon that launches a Web browser on this file.
+
+<H3><A NAME="TOC60">Installation for UNIX Systems</A></H3>
+
+<P>To install the SMT kernel on a UNIX system you need to:
+<OL>
+<LI>Install the <A href="/html/sfl/">SFL package</A>: you will want to place
+<TT>libsfl.a</TT> and <TT>sfl.h</TT> in the current directory.
+
+<LI>Download the SMT source archive and decompress it.
+<LI>Run the 'build' script to compile the SMT sources and build
+the libsmt.a archive file and various executables.
+</OL>
+
+<H4>Decompressing The Source Archive</H4>
+
+<P>To unzip the <A href="/pub/smt/src/smtsrc28.zip">source .zip file</A>, you need the Infozip
+<A href="http://quest.jpl.nasa.gov/Info-Zip/Info-Zip.html">unzip</A> tool:
+<PRE>$ mkdir temp
+$ mv smtsrc28.zip temp
+$ cd temp
+$ unzip -a smtsrc28
+</PRE>
+
+<P>To decompress the <A href="/pub/smt/src/smtsrc28.tgz">source archive</A> you need GNU gzip/gunzip
+and tar:
+<PRE>$ mkdir temp
+$ mv smtsrc28.tgz temp
+$ cd temp
+$ gzip -d smtsrc28.tgz
+  or
+$ gunzip smtsrc28.tgz
+$ tar -xvf smtsrc28.tar
+</PRE>
+
+<P>You can also, in extreme cases, unzip the files on a PC and
+transfer the individual files to the UNIX system.
+
+<H4>Compiling The SMT Sources</H4>
+
+<P>To compile the SMT sources, use this command:
+<PRE>$ chmod +x build
+$ build
+</PRE>
+
+<P>If you get warnings or error messages, this is usually a bad
+sign.  Some compilers issue warnings just because you ask for ANSI
+compilation.  If you get any other error messages, please let us
+know.
+
+<P>The SMT source archive includes a script, <TT><B>c</B></TT>,
+that you can (and should) use to compile an individual SMT source.
+This script invokes the ANSI C compiler to produce an object code
+file. It detects the platform and invokes the compiler with the
+necessary switches for ANSI C compilation.  On some systems this
+is the normal behaviour for the <B>cc</B> command.  On other
+systems it is not normal.  You should make the <TT>c</TT> script
+executable, (preferrably) install it in a shared directory like
+/usr/local/bin, and try it out:
+<PRE>$ chmod a+rx c
+$ mv c /usr/local/bin
+$ c
+</PRE>
+
+<P>The <TT>c</TT> script is also included in the SFL package.
+
+<H3><A NAME="TOC61">Installation for Digital VMS Systems</A></H3>
+
+<P>SMT has not been tested on Digital VMS systems.  However, it
+should be portable, especially to later versions of VMS that are
+POSIX compliant.  To install the SMT on a Digital VMS system you
+need to:
+<OL>
+<LI>Install the SFL package: you will want to place
+<TT>libsfl.olb</TT> and <TT>sfl.h</TT> in the current
+directory.
+<LI>Download the source archive and decompress it.
+<LI>Run the 'build.txt' command file to build the libsmt.olb
+library file and the various executables.
+</OL>
+
+<H4>Decompressing The Source Archive</H4>
+
+<P>To unzip the <A href="/pub/smt/src/smtsrc28.zip">source .zip file</A>, you need the Infozip
+<A href="http://quest.jpl.nasa.gov/Info-Zip/Info-Zip.html">unzip</A> tool:
+<PRE>$ create/dir [.temp]
+$ ren smtsrc28.zip [.temp]
+$ set def [.temp]
+$ unzip -a smtsrc28
+</PRE>
+
+<P>You can also, in extreme cases, unzip the files on a PC and
+transfer the individual files to the VMS system.
+
+<H4>Compiling The SMT Sources</H4>
+
+<P>To compile the SMT sources, use this command:
+<PRE>$ @build.txt
+</PRE>
+
+<P>Note: this command file has not yet been tested, so it would be
+a little surprising if it worked.  Nonetheless, the work it does
+is simple: compile all .c programs, then link a couple of main
+programs.  If you get warnings or error messages, this is a bad
+sign - please let us know.
+
+<H3><A NAME="TOC62">Installation for Windows</A></H3>
+
+<P>Our preferred way of working is to build the SFL as a static
+library, and do the same for the SMT kernel.  Using a typical
+Windows-hosted compiler, we create two projects.  Then, we create a
+project for each main program.  For instance, we create a project
+each for the echod and echocli programs.  In these projects, we
+refer to the SFL and SMT library files.  While the SFL and SMT
+libraries compile fine under 16-bit Windows, the link phase usually
+gives problems, and we prefer to work with a 32-bit memory model.
+All SMT programs, including the Xitami web server, run as 32-bit
+console processes under Windows NT and 95.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt16.htm">&lt;</A>
+ | <A href="smt18.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,100 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>queue_create</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt35.htm">&lt;</A>
+ | <A href="smt37.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="queue_create">&nbsp;</A>
+<H3><A NAME="TOC82"><TT>queue_create</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+QUEUE *
+queue_create (
+    AGENT *agent,                       /*  Parent agent block, or null      */
+    int    max_events                   /*  Max. events; 0 = no limit        */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Creates an event queue, and returns a handle to the created
+   queue. Event queues are unnamed but attached to a agent within
+   an agent. Queue can also be 'floating', i.e. not attached to a
+   agent. This is useful for foreign programs. If you specify a
+   agent, the queue is attached to that agent. If the agent
+   argument is null, the queue is left floating. You always refer
+   to a queue using its address (within the owning process) or QID
+   handle (within any process). The current implementation uses a
+   linked list in heap memory, so QID handles are only valid
+   within the process. Future implementations may use other types
+   of shared memory including connections across a communications
+   protocol. Returns a pointer to the created QUEUE block. In case
+   of error, returns null and sets smt_errno to one of these
+   values: <TABLE BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT
+   NOTREADY</B>  <TD ALIGN="LEFT">smt_init() was not called, or
+   failed <TR><TD ALIGN="LEFT"><B>SMT OUTOFMEMORY</B>  <TD
+   ALIGN="LEFT">Not enough heap memory left </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    static
+      long  top_id = 0;                 /*  We number queues from 1 up       */
+    QID     qid;                        /*  Created queue                    */
+    SYMBOL  *dict_entry;                /*  Dictionary symbol                */
+    QUEUE   *queue;                     /*  Queue information block          */
+
+#if (defined (SMT_TRACE))
+    trace ("queue_create: agent=%s", agent? agent-&gt; name: "&lt;none&gt;");
+#endif
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (NULL);
+      }
+
+    qid.node  = 0;                      /*  Queues are local for now         */
+    qid.ident = ++top_id;               /*  First queue has id = 1           */
+    dict_entry = sym_create_symbol (dict, get_queue_name (&amp;qid), NULL);
+    if (dict_entry == NULL)
+      {
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Allocate a QUEUE block and attach it to the queue list               */
+    queue = (QUEUE *) node_create (agent? &amp;agent-&gt; queues: NULL,
+                                   sizeof (QUEUE));
+    if (queue == NULL)
+      {
+        sym_delete_symbol (dict, dict_entry);
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Point the dictionary entry to the queue information block            */
+    dict_entry-&gt; data = queue;
+
+    /*  Now initialise the queue info block fields and list heads            */
+    node_reset (&amp;queue-&gt; events);
+    node_reset (&amp;queue-&gt; threads);
+    queue-&gt; symbol     = dict_entry;
+    queue-&gt; agent      = agent;
+    queue-&gt; qid        = qid;
+    queue-&gt; max_events = max_events;
+    queue-&gt; shutdown   = FALSE;
+    return (queue);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt35.htm">&lt;</A>
+ | <A href="smt37.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

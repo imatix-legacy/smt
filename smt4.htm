@@ -1,0 +1,174 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>Using The SMT API In A Foreign Program</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt3.htm">&lt;</A>
+ | <A href="smt5.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC38">Using The SMT API In A Foreign Program</A></H2>
+
+<P>In an SMT application there will always be some
+<EM>foreign</EM> programs.  Some examples are:
+<UL>
+<LI>The stub that starts-up the application.
+<LI>Programs that interface with non-SMT event-supplying
+systems.
+</UL>
+
+<P>It may make sense in some applications to write all programs as
+foreign.  For instance, you could use the SMT kernel simply to
+send events between programs without using the multithreading
+facilities.
+
+<H3><A NAME="TOC39">Writing A Stub Program</A></H3>
+
+<P>When you build a new SMT application you must also write a STUB
+program (the main() function).  The stub program usually does
+this:
+<UL>
+<LI>It initialises the SMT kernel by calling <A href="smt21.htm#smt_init">smt init</A>().
+<LI>It initialises each agent that it needs.
+<LI>It tells the SMT kernel to execute the application by calling
+<A href="smt23.htm#smt_exec_full">smt exec full</A>().
+<LI>It terminates the SMT kernel by calling <A href="smt22.htm#smt_term">smt term</A>().
+</UL>
+
+<P>When you compile and link the stub, you create the executable
+program for the application.
+
+<H3><A NAME="TOC40">Managing A Floating Event Queue</A></H3>
+
+<P>An interface between a native program (or a thread) and a
+foreign program consists of at least an event queue in either
+direction.  The SMT kernel automatically handles the event queue
+for the native program.  You must handle the other event queue
+yourself:
+
+<PRE>
+       Foreign                               Native
+   .--------------.                     .--------------.
+   : event_send() :-----------&gt; ()()()():              |
+   :              |()()()() &lt;-----:-----: event_send() |
+   `=============="    :          :     `=============="
+                       :        normal event queue
+                       `----- floating event queue
+
+Figure: Managing a floating event queue
+</PRE>
+
+<P>The program that sends an event does not know whether the event
+queue is floating or not, although it can find this out if it has
+to, by examining the queue object.  The difference between a
+floating event queue and a normal event queue is that you must get
+events off a floating event queue yourself.  You can use the API
+function calls:
+<DL>
+<DT><A href="smt42.htm#event_accept">event accept</A>()</DT>
+<DD>Accept the next event from an event queue.</DD>
+<DT><A href="smt43.htm#event_reject">event reject</A>()</DT>
+<DD>Reject the next event from an event queue.</DD>
+<DT><A href="smt44.htm#event_expire">event expire</A>()</DT>
+<DD>Expire the next event from an event queue.</DD>
+<DT><A href="smt45.htm#event_discard">event discard</A>()</DT>
+<DD>Discard the next event from an event queue.</DD>
+<DT><A href="smt46.htm#event_iterate">event iterate</A>()</DT>
+<DD>Find the next event in an event queue.</DD>
+<DT><A href="smt47.htm#event_destroy">event destroy</A>()</DT>
+<DD>Destroy a specific event.</DD>
+</DL>
+
+<P>You can use methods if you need to.  This can be a convenient
+way of translating event names into internal numbers of some sort.
+For instance, if you design the foreign program using the standard
+Libero C schema, you can use methods to translate event names into
+internal numbers, much as the SMT kernel does for a native
+program.  This is (more or less) the SMT kernel code that does
+this translation:
+
+<PRE>
+    EVENT   *event;             /*  Event information block     */
+    EVENT   *deliver_event;     /*  Event to deliver            */
+    METHOD  *method;            /*  Method information block    */
+    THREAD  *active;            /*  Thread in active list       */
+    int     top_priority;       /*  Highest event priority      */
+    int     event_number;       /*  Number for event to deliver */
+
+    /*  Get event to deliver - find event with highest priority */
+    top_priority  = -1;
+    deliver_event = NULL;
+    event = queue-&gt; events.next;
+    while ((NODE *) event != &queue-&gt; events)
+      {
+        /*  Lookup method; if method not declared, reject event */
+        method = <A href="smt34.htm#method_lookup">method lookup</A> (agent, event-&gt; name);
+        if (method == NULL)
+          {
+            /*  Reject this event, but keep place in queue...   */
+            <A href="smt65.htm#sendfmt">sendfmt</A> (&console, "ERROR",
+                     "Event %s not declared by %s",
+                      event-&gt; name, agent-&gt; name);
+            event = event-&gt; next;
+            <A href="smt43.htm#event_reject">event reject</A> (queue, event-&gt; prev);
+            continue;           /*  Process this new event      */
+          }
+        if (method-&gt; priority &gt; top_priority)
+          {
+            deliver_event = event;
+            event_number  = method-&gt; event_number;
+            top_priority  = method-&gt; priority;
+          }
+        event = event-&gt; next;
+      }
+    if (deliver_event)
+      {
+        /*  Deliver event, move thread to active queue          */
+        thread-&gt; event          = <A href="smt42.htm#event_accept">event accept</A> (queue,
+                                  deliver_event);
+        thread-&gt; the_next_event = event_number;
+        thread-&gt; active         = TRUE;
+      }
+</PRE>
+
+<H3><A NAME="TOC41">Executing The Application</A></H3>
+
+<P>The main() function in an executable is a foreign program.
+Since a foreign program is external to the multithreading process
+of the SMT kernel, control must pass back and forwards between the
+SMT kernel and the foreign program.  Typically this is a loop like
+this:
+<UL>
+<LI>Collect any events and send them to the appropriate event
+queues.
+<LI>Call the SMT kernel to deliver the events and execute all
+active threads.
+<LI>Repeat until the application has ended.
+</UL>
+
+<P>To do the second step, the foreign program calls
+<A href="smt23.htm#smt_exec_full">smt exec full</A>().  This function runs all the agent threads
+until there are no more events left to deliver, or active
+threads.
+
+<P>Sometimes it is better to call <A href="smt24.htm#smt_exec_step">smt exec step</A>()
+repeatedly. This function delivers events, but only executes the
+first active thread.  This function provides a finer-grain
+control.  For instance, if the application loops because two
+threads send each other events in a never-ending loop (usually a
+programming error), the <A href="smt23.htm#smt_exec_full">smt exec full</A>() call will never
+return, while the <A href="smt24.htm#smt_exec_step">smt exec step</A>() call will return each
+time that the kernel switches between the threads.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt3.htm">&lt;</A>
+ | <A href="smt5.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

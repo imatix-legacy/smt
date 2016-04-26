@@ -1,0 +1,145 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smttran_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt82.htm">&lt;</A>
+ | <A href="smt84.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smttran_init">&nbsp;</A>
+<H3><A NAME="TOC129"><TT>smttran_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int
+smttran_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT transfer agent. Returns 0 if initialised
+   okay, -1 if there was an error. The transfer agent reads and
+   writes blocks of data, or complete files, through an open
+   TCP/IP socket. A block of data is sent/received as a two-byte
+   length header followed by the data block. Creates an unnamed
+   thread automatically. Supports these public methods: <TABLE
+   BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>PUT BLOCK</B>  <TD
+   ALIGN="LEFT">Write a length-specified block to a socket (&lt;
+   64k) <TR><TD ALIGN="LEFT"><B>GET BLOCK</B>  <TD
+   ALIGN="LEFT">Read a length-specified block from a socket (&lt;
+   64k) <TR><TD ALIGN="LEFT"><B>PUT HUGE</B>  <TD
+   ALIGN="LEFT">Write a length-specified block to a socket (&lt;
+   2Gb) <TR><TD ALIGN="LEFT"><B>GET HUGE</B>  <TD
+   ALIGN="LEFT">Read a length-specified block from a socket (&lt;
+   2Gb) <TR><TD ALIGN="LEFT"><B>PUT FILE</B>  <TD
+   ALIGN="LEFT">Write part or all of a file to a socket <TR><TD
+   ALIGN="LEFT"><B>GET FILE</B>  <TD ALIGN="LEFT">Read part or all
+   of a file from a socket <TR><TD ALIGN="LEFT"><B>PIPE CREATE</B>
+   <TD ALIGN="LEFT">Create new transfer pipe <TR><TD
+   ALIGN="LEFT"><B>CLEAR PIPES</B>  <TD ALIGN="LEFT">Destroy all
+   transfer pipes <TR><TD ALIGN="LEFT"><B>COMMIT</B>  <TD
+   ALIGN="LEFT">Wait until all transfer requests are finished
+   </TABLE> Sends errors to the SMTOPER agent; see the doc for
+   reply events.
+<H4>Source Code - (smttran.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle to various threads        */
+#   include "smttran.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name      Event value      Priority        */
+    /*  Shutdown event comes from Kernel                                      */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",       shutdown_event,  SMT_PRIORITY_MAX);
+
+    /*  Reply events from socket agent                                       */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_INPUT_OK",  ok_event,          0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_OUTPUT_OK", ok_event,          0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_READ_OK",   read_ok_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_WRITE_OK",  write_ok_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_READH_OK",  readh_ok_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_WRITEH_OK", writeh_ok_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_CLOSED",    sock_closed_event, 0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_ERROR",     sock_error_event,  0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_TIMEOUT",   sock_error_event,  0);
+
+    /*  Reply events from timer agent                                        */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIME_ALARM",     alarm_event,       0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIME_ERROR",     error_event,       0);
+
+    /*  Public methods supported by this agent                               */
+    declare_put_block    (put_block_event,    0);
+    declare_get_block    (get_block_event,    0);
+    declare_put_huge     (put_huge_event,     0);
+    declare_get_huge     (get_huge_event,     0);
+    declare_put_file     (put_file_event,     0);
+    declare_get_file     (get_file_event,     0);
+    declare_pipe_create  (pipe_create_event,  0);
+    declare_clear_pipes  (clear_pipes_event,  0);
+    declare_tran_commit  (commit_event,       SMT_PRIORITY_MIN);
+
+    /*  Private methods used to pass initial thread events                   */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_MASTER",       master_event,       0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_PIPE_MANAGER", pipe_manager_event, 0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    <A href="smt78.htm#smtoper_init">smtoper init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_OPERATOR, "")) != NULL)
+        operq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that socket agent is running, else start it up                */
+    <A href="smt80.htm#smtsock_init">smtsock init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_SOCKET, "")) != NULL)
+        sockq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that timer agent is running, else start it up                 */
+    <A href="smt82.htm#smttime_init">smttime init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_TIMER, "")) != NULL)
+        timeq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Create initial thread to manage master thread                        */
+    if ((thread = <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "")) != NULL)
+      {
+        SEND (&amp;thread-&gt; queue-&gt; qid, "_MASTER", "");
+        ((TCB *) thread-&gt; tcb)-&gt; thread_type = master_event;
+        ((TCB *) thread-&gt; tcb)-&gt; filename    = NULL;
+      }
+    else
+        return (-1);
+
+    /*  Create initial thread to manage pipes                                */
+    if ((thread = <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "__pipe_manager")) != NULL)
+      {
+        SEND (&amp;thread-&gt; queue-&gt; qid, "_PIPE_MANAGER", "");
+        ((TCB *) thread-&gt; tcb)-&gt; thread_type = pipe_manager_event;
+        ((TCB *) thread-&gt; tcb)-&gt; filename    = NULL;
+      }
+    else
+        return (-1);
+
+    /*  Clear &amp; prepare request queue                                        */
+    node_reset (&amp;requests);
+
+    /*  Create pipe lookup table                                             */
+    pipes = sym_create_table ();
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt82.htm">&lt;</A>
+ | <A href="smt84.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>
