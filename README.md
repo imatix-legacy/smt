@@ -42,9 +42,10 @@ The `src` directory was created from the unpacked contents of
 `pub/src/smtsrc28.tgz`, for ease of reference.  
 
 The build scripts were built with
-[otto](https://github.com/imatix-legacy/otto) from [src/buildsmt.txt].
-It also needs [libero](https://github.com/imatix-legacy/libero), and 
-the [iMatix SFL](https://github.com/imatix-legacy/sfl).
+[otto](https://github.com/imatix-legacy/otto) from
+[src/buildsmt.txt](src/buildsmt.txt).  It also needs
+[libero](https://github.com/imatix-legacy/libero), and the [iMatix
+SFL](https://github.com/imatix-legacy/sfl).
 
 ## `website`
 
