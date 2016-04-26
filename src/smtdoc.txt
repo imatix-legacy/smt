@@ -1,0 +1,45 @@
+#   Name:       smtdoc.txt
+#   Title:      Documentation coversheet for SMT package
+#   Package:    Libero/SMT Kernel 2.x
+#
+#   Written:    1996/04/09  Pieter Hintjens <ph@imatix.com>
+#   Revised:    1997/12/23  Pieter Hintjens <ph@imatix.com>
+#
+#   Synopsis:   This file lists all source files that comprise the SMT and
+#               for which srcdoc must generate documentation.  To produce
+#               the documentation, do this:
+#
+#                   srcdoc smtdoc.txt
+#                   htmlpp ...?
+#
+#               You need to install the srcdoc and htmlpp packages: you can
+#               download these from http://www.imatix.com as zip files in
+#               /pub/tools/srcdoc.zip and /pub/tools/htmlpp.zip.
+#
+#   Copyright:  Copyright (c) 1996-2000 iMatix Corporation
+#   License:    This is free software; you can redistribute it and/or modify
+#               it under the terms of the SMT License Agreement as provided
+#               in the file LICENSE.TXT.  This software is distributed in
+#               the hope that it will be useful, but without any warranty.
+#
+
+<<Files>>
+smtlib.h smtlib.c
+smtdefn.h
+smtauth.c
+smtecho.c
+smthttp.c
+smtftpc.c
+smtftpd.c
+smtrdns.c
+smtlog.c
+smtoper.c
+smtslot.c
+smtsock.c
+smttime.c
+smttran.c
+smtsimu.h smtsimu.c
+smtupm.h  smtupmd.c smtupmc.c
+
+<<Header>>
+.include smtdoc1.txt

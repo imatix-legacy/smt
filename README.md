@@ -6,7 +6,7 @@ tool that lets you write portable high-performance (cooperative)
 multithreaded programs based on Libero's finite-state machine (FSM)
 design method.
 
-It was developed stand alone throughout the 1990s, and then later 
+It was developed stand alone throughout the 1990s, and then later
 incorporated directly into iMatix products such as the Xitami
 webserver.   It became a key part of the iMatix "base" in the early
 2000s and was not released separately after that.
@@ -39,13 +39,17 @@ git repository.
 ## `src`
 
 The `src` directory was created from the unpacked contents of
-`pub/src/smtsrc28.tgz`, for ease of reference.  
+`pub/src/smtsrc28.tgz`, for ease of reference.  To this the `smtdoc*.txt`
+files and `*.def` files were added from an early 2000 build directory,
+with approximately the equivalent documentation version.
 
 The build scripts were built with
 [otto](https://github.com/imatix-legacy/otto) from
 [src/buildsmt.txt](src/buildsmt.txt).  It also needs
 [libero](https://github.com/imatix-legacy/libero), and the [iMatix
-SFL](https://github.com/imatix-legacy/sfl).
+SFL](https://github.com/imatix-legacy/sfl).  Building the documentation
+requires [srcdoc](https://github.com/imatix-legacy/srcdoc) and
+[htmlpp](https://github.com/imatix-legacy/htmlpp).
 
 ## `website`
 
@@ -54,6 +58,7 @@ is approximately equivalent to the contents of `pub/doc/smtdoc28.tgz`, but
 was taken directly from http://legacy.imatix.com/html/smt.
 
 The documentation was built (with `htmlpp`) from a marked up text file.
-At present there is no known version of the SMT documentation source file,
-only rendered HTML files.  If the source file is found it will be added
-to this repository.
+`src/smtdoc.txt`, `src/smtdoc1.txt` and `src/smtdoc2.txt` contain
+approximately equivalent source for the documentation, taken from an
+early 2000 build directory. These should rebuild to similiar documentaton
+but it may not be exactly identical.
