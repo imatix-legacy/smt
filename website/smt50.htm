@@ -1,0 +1,73 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>thread_lookup</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt49.htm">&lt;</A>
+ | <A href="smt51.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="thread_lookup">&nbsp;</A>
+<H3><A NAME="TOC96"><TT>thread_lookup</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+THREAD *
+thread_lookup (
+    const char *agent_name,             /*  Name of agent                    */
+    const char *thread_name             /*  Create thread with this name     */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Checks whether a specific thread exists; returns the address of
+   the thread information block, or NULL if there was an error,
+   setting smt_errno to one of these values: <TABLE BORDER NOWRAP>
+   <TR><TD ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD
+   ALIGN="LEFT">smt_init() was not called, or failed <TR><TD
+   ALIGN="LEFT"><B>SMT NOSUCHTHREAD</B>  <TD ALIGN="LEFT">The
+   agent/thread does not exist </TABLE> If there are multiple
+   threads (routers) with the same name, returns the earliest
+   thread that was defined.
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    SYMBOL  *dict_entry;                /*  Dictionary symbol                */
+    char    *full_name;                 /*  Full thread name                 */
+
+#if (defined (SMT_TRACE))
+    trace ("thread_lookup: agent=%s thread=%s", agent_name, thread_name);
+#endif
+    ASSERT (agent_name);
+    ASSERT (thread_name);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (NULL);
+      }
+
+    /*  Check if the thread already exists                                   */
+    full_name  = get_entity_name (agent_name, thread_name);
+    dict_entry = sym_lookup_symbol (dict, full_name);
+    if (dict_entry == NULL)
+      {
+         smt_errno = SMT_NOSUCHTHREAD;
+         return (NULL);
+      }
+
+    /*  Get address of thread block, then find first thread defined for      */
+    /*  this queue.  Usually it will be the same thread; when there are      */
+    /*  multiple threads (routers) it may be a different thread.             */
+    return (((THREAD *) (dict_entry-&gt; data))-&gt; queue-&gt; threads.next);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt49.htm">&lt;</A>
+ | <A href="smt51.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

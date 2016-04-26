@@ -1,0 +1,90 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The Unattended Process Monitor</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt89.htm">&lt;</A>
+ | <A href="smt91.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC136">The Unattended Process Monitor</A></H2>
+<P>Filename: smtupm.h
+<BR>Package: Libero SMT 2.x
+<BR>Written: 1996/09/10 iMatix SMT kernel team <A
+   HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+<BR>Revised: 1997/09/08
+<BR>Copyright: Copyright (c) 1991-2000 iMatix Corporation
+<H3>Synopsis</H3>
+<P>Defines constants, messages, and prototypes for the UPM
+   (unattended process monitor) agents.
+<H4>List of Functions</H4>
+<UL>
+<LI>int <A href="smt91.htm#smtupmc_init">smtupmc init</A><BR>
+   (char *args, char *port);
+</LI>
+<LI>int <A href="UNDEF">smtupmd init</A><BR>
+   (char *inifile, char *port);
+</LI>
+</UL>
+<H4>List of Symbol Definitions</H4>
+<P>smtupm.h defines these symbols, possibly conditionally:
+<TABLE BORDER NOWRAP>
+<TR><TH ALIGN="LEFT">Symbol:  </TH>
+    <TH ALIGN="LEFT">Defined as:</TH>
+<TR><TD ALIGN="LEFT"><TT><B>SMT_UPMC</B>  </TT>
+<TD ALIGN="LEFT">"smtupmc" /* Name of UPM client agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_UPMD</B>  </TT>
+<TD ALIGN="LEFT">"smtupmd" /* Name of UPM daemon agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_UPM_MESSAGE</B>  </TT>
+<TD ALIGN="LEFT">"ds"
+<TR><TD ALIGN="LEFT"><TT><B>SMT_UPM_PORT</B>  </TT>
+<TD ALIGN="LEFT">"5050" /* Port for UPM connection */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_ERROR</B>  </TT>
+<TD ALIGN="LEFT">201 /* Reply fatal error */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_HALT</B>  </TT>
+<TD ALIGN="LEFT">101 /* Halt UPM and processes */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_HALTING</B>  </TT>
+<TD ALIGN="LEFT">202 /* Reply halting UPM */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_LIST</B>  </TT>
+<TD ALIGN="LEFT">100 /* List processes */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_READY</B>  </TT>
+<TD ALIGN="LEFT">200 /* Reply ready for command */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_START</B>  </TT>
+<TD ALIGN="LEFT">102 /* Start-up a process */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_START_ERROR</B>  </TT>
+<TD ALIGN="LEFT">209 /* Reply task could not be started */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_START_OK</B>  </TT>
+<TD ALIGN="LEFT">208 /* Reply task started ok */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_STATUS</B>  </TT>
+<TD ALIGN="LEFT">104 /* Enquire process status */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_STOP</B>  </TT>
+<TD ALIGN="LEFT">103 /* Shut-down a process */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_STOP_ERROR</B>  </TT>
+<TD ALIGN="LEFT">211 /* Reply task could not be stopped */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_STOP_OK</B>  </TT>
+<TD ALIGN="LEFT">210 /* Reply task stopped ok */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_TASK_ID</B>  </TT>
+<TD ALIGN="LEFT">203 /* Reply task name */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_TASK_NF</B>  </TT>
+<TD ALIGN="LEFT">205 /* Reply unknown task */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_TASK_OK</B>  </TT>
+<TD ALIGN="LEFT">204 /* Reply task status */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_TASK_RUNNING</B>  </TT>
+<TD ALIGN="LEFT">206 /* Reply task is running */
+<TR><TD ALIGN="LEFT"><TT><B>UPM_TASK_STOPPED</B>  </TT>
+<TD ALIGN="LEFT">207 /* Reply task is not running */
+<TR><TD ALIGN="LEFT"><TT><B>_SMTUPM_INCLUDED</B>  </TT>
+<TD ALIGN="LEFT">TRUE
+</TABLE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt89.htm">&lt;</A>
+ | <A href="smt91.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

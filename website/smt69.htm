@@ -1,0 +1,43 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smt_crash_report</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt68.htm">&lt;</A>
+ | <A href="smt70.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smt_crash_report">&nbsp;</A>
+<H3><A NAME="TOC115"><TT>smt_crash_report</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+char *
+smt_crash_report (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Returns a formatted string showing the current agent, state,
+   module, step, event, and catch report, if any.
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    static char
+        report [512];
+
+    sprintf (report, "Abort at %s:%s:%s (%s, %s)",
+                      cur_agent, cur_module, cur_step,
+                      cur_state, cur_event);
+    return (report);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt68.htm">&lt;</A>
+ | <A href="smt70.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

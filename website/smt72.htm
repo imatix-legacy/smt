@@ -1,0 +1,95 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtecho_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt71.htm">&lt;</A>
+ | <A href="smt73.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtecho_init">&nbsp;</A>
+<H3><A NAME="TOC118"><TT>smtecho_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int
+smtecho_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT echo agent. Returns 0 if initialised okay,
+   -1 if there was an error. The echo agent handles the TCP ECHO
+   protocol on port 7. It logs connections to the file
+   smtecho.log. It sends errors to the SMTOPER agent. If you set
+   the ip_portbase before calling this function, the echo port is
+   shifted by that amount. A typical value for ip_portbase is
+   5000: the echo agent will then handle connections on port 5007.
+<H4>Source Code - (smtecho.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle to various threads        */
+#   include "smtecho.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name      Event value     Priority        */
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",       shutdown_event, SMT_PRIORITY_MAX);
+
+    /*  Reply events from socket agent                                       */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_INPUT_OK",  ok_event,       0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_OUTPUT_OK", ok_event,       0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_READ_OK",   read_ok_event,  0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_WRITE_OK",  write_ok_event, 0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_CLOSED",    closed_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_ERROR",     error_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_TIMEOUT",   error_event,    0);
+
+    /*  Private methods used to pass initial thread events                   */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_MASTER",        master_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_CLIENT",        client_event,   0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    <A href="smt78.htm#smtoper_init">smtoper init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_OPERATOR, "")) != NULL)
+        operq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that socket agent is running, else start it up                */
+    <A href="smt80.htm#smtsock_init">smtsock init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_SOCKET, "")) != NULL)
+        sockq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that logging agent is running, and create new thread          */
+    <A href="smt77.htm#smtlog_init">smtlog init</A> ();
+    if ((thread = <A href="smt49.htm#thread_create">thread create</A> (SMT_LOGGING, "")) != NULL)
+        logq = thread-&gt; queue-&gt; qid;        /*  Get logging queue id         */
+    else
+        return (-1);
+
+    /*  Create initial thread to manage master port                          */
+    if ((thread = <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "")) != NULL)
+      {
+        SEND (&amp;thread-&gt; queue-&gt; qid, "_MASTER", "");
+        ((TCB *) thread-&gt; tcb)-&gt; thread_type = master_event;
+        ((TCB *) thread-&gt; tcb)-&gt; handle      = 0;
+      }
+    else
+        return (-1);
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt71.htm">&lt;</A>
+ | <A href="smt73.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

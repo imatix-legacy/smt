@@ -1,0 +1,130 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>agent_declare</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt29.htm">&lt;</A>
+ | <A href="smt31.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="agent_declare">&nbsp;</A>
+<H3><A NAME="TOC76"><TT>agent_declare</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+AGENT *
+agent_declare (
+    const char *agent_name              /*  Name of agent to declare         */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Declares a new agent. Typically you'll do this when you are
+   initialising a agent. You must declare the agent before you can
+   create queues, threads, or methods for that agent. The agent
+   name is an arbitrary text, unique within the application.
+   Returns the address of the created AGENT block. If there was an
+   error, returns NULL and sets smt_errno to one of these values:
+   <TABLE BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT NOTREADY</B>
+   <TD ALIGN="LEFT">smt_init() was not called, or failed <TR><TD
+   ALIGN="LEFT"><B>SMT OUTOFMEMORY</B>  <TD ALIGN="LEFT">Not
+   enough heap memory left <TR><TD ALIGN="LEFT"><B>SMT
+   AGENTEXISTS</B>  <TD ALIGN="LEFT">A agent with this name is
+   already declared </TABLE> Agents and threads are stored in the
+   dictionary as follows: a name is built of three parts:
+   s~agent~[thread]. This name is the key into the dictionary and
+   lets us find a agent, or thread by name. Then, all agents are
+   chained into a linked list that is attached to the agents list.
+   Each agent has a sublist of queues, and each queue has a
+   sublist of threads. Each thread has a pointer to the parent
+   queue respectively. This cross-linking lets us browse the list
+   of agents/threads from any point. Names are always stored in
+   lower-case. Sets agent priority to SMT_PRIORITY_NORMAL; sets
+   router flag to FALSE, and max_threads to 0.
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    SYMBOL  *dict_entry;                /*  Dictionary symbol                */
+    AGENT   *agent;                     /*  Agent information block          */
+    char    *full_name;                 /*  Full agent name                  */
+
+#if (defined (SMT_TRACE))
+    trace ("agent_declare: agent=%s", agent_name);
+#endif
+    ASSERT (agent_name);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (NULL);
+      }
+
+    /*  Check that agent is not already declared                             */
+    full_name = get_entity_name (agent_name, NULL);
+    if (sym_lookup_symbol (dict, full_name))
+      {
+        smt_errno = SMT_AGENTEXISTS;
+        return (NULL);
+      }
+
+    /*  Now create entry for the agent                                       */
+    dict_entry = sym_create_symbol (dict, full_name, NULL);
+    if (dict_entry == NULL)
+      {
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Allocate an AGENT block and attach it to the agent list              */
+    agent = (AGENT *) node_create (agents.prev, sizeof (AGENT));
+    if (agent == NULL)
+      {
+        sym_delete_symbol (dict, dict_entry);
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Point the dictionary entry to the agent information block            */
+    dict_entry-&gt; data = agent;
+
+    /*  Now initialise the agent - all fields are already set to zero        */
+    node_reset (&amp;agent-&gt; methods);
+    node_reset (&amp;agent-&gt; queues);
+    agent-&gt; symbol = dict_entry;
+    agent-&gt; name    = mem_strdup (agent_name);
+
+    /*  These fields must be set by the calling program                      */
+    agent-&gt; tcb_size     = 0;           /*  Size of thread context block     */
+    agent-&gt; maxevent     = 0;           /*  Number of events defined         */
+    agent-&gt; maxmodule    = 0;           /*  Number of modules defined        */
+    agent-&gt; maxstate     = 0;           /*  Number of states defined         */
+    agent-&gt; initialise   = NULL;        /*  Initialise-the-thread            */
+    agent-&gt; LR_nextst    = NULL;        /*  Next state table                 */
+    agent-&gt; LR_action    = NULL;        /*  Action table                     */
+    agent-&gt; LR_offset    = NULL;        /*  Vector offset table              */
+    agent-&gt; LR_vector    = NULL;        /*  Vector table                     */
+    agent-&gt; LR_module    = NULL;        /*  Module table                     */
+    agent-&gt; LR_defaults = 0;            /*  Defaults state                   */
+
+    /*  These fields may be changed by the calling program                   */
+    agent-&gt; stack_size   = 0;           /*  Subdialog stack size (if reqd)   */
+    agent-&gt; LR_mname     = NULL;        /*  Module name table (if animated)  */
+    agent-&gt; LR_sname     = NULL;        /*  State name table (if animated)   */
+    agent-&gt; LR_ename     = NULL;        /*  Event name table (if animated)   */
+    agent-&gt; priority     = SMT_PRIORITY_NORMAL;
+    agent-&gt; router       = FALSE;       /*  Agent acts as a router           */
+    agent-&gt; animate      = FALSE;       /*  Agent animation enabled          */
+    agent-&gt; max_threads = 0;            /*  Max. number of threads           */
+
+    return (agent);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt29.htm">&lt;</A>
+ | <A href="smt31.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

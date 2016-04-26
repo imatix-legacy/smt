@@ -1,0 +1,116 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The Logging Agent - SMTLOG</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt5.htm">&lt;</A>
+ | <A href="smt7.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="SMTLOG">&nbsp;</A>
+<H3><A NAME="TOC43">The Logging Agent - SMTLOG</A></H3>
+
+<P>Creates log files, and writes data to the log files.  Can
+handle multiple log files in parallel; each open log file is
+managed by one thread.  Sends errors to the operator console
+agent.
+
+<P>To use, call <A href="smt77.htm#smtlog_init">smtlog init</A>().  This does not create any
+threads. Create an unnamed thread using the thread_create()
+function.  Send an OPEN or APPEND event to create the log file and
+PUT events to write to the log file.  Finally, send a CLOSE event
+to close the log file and terminate the log file thread.  SMTLOG
+does not reply - errors are sent to the console, not the
+requesting program.  It supports these methods:
+<UL>
+<LI>CYCLE - cycle log file if it already exists.
+<LI>OPEN - create new, empty log file.
+<LI>APPEND - open log file in append mode.
+<LI>PUT - write line of data to log file.
+<LI>PLAIN - do not timestamp logged data.
+<LI>STAMP - timestamp logged data (default).
+<LI>CLOSE - close log file and destroy log file thread.
+</UL>
+
+<P>Example of initialising SMTLOG:
+
+<PRE>
+/*  Static data                                                 */
+static QID
+    logq;                       /*  Logging agent event queue   */
+
+    /*  In agent initialisation code                            */
+    THREAD  *thread;            /*  Handle to various threads   */
+    /*  Ensure that logging agent is running, else start it     */
+    <A href="smt77.htm#smtlog_init">smtlog init</A> ();
+    if ((thread = <A href="smt49.htm#thread_create">thread create</A> (SMT_LOGGING, "")) != NULL)
+        logq = thread-&gt; queue-&gt; qid;   /*  Get logging queue id */
+    else
+        return (-1);
+</PRE>
+
+<H4>The CYCLE Method</H4>
+
+<P>If the specified log file already exists, renames it to a file
+whose name consists of the first letter of the log file name,
+followed by the date in 7 positions (YYYYDDD).  If that file
+name already exists, generates a unique filename.  Takes the
+event body to supply the log file name; if the event body is
+empty, uses the thread name instead.  If the log file name is
+empty ("") or the 4-letter string "NULL", nothing is done.
+
+<H4>The OPEN Method</H4>
+
+<P>Creates a new, empty log file.  Takes the event body to supply
+the log file name; if the event body is empty, uses the thread
+name instead.  If the log file name is "" or "NULL", no file is
+created, and SMTLOG discards all output.
+
+<H4>The APPEND Method</H4>
+
+<P>Opens an existing log file for additional output.  If the log
+file does not already exist, acts like OPEN.  Takes the event body
+to supply the log file name; if the event body is empty, uses the
+thread name instead.
+
+<H4>The PUT Method</H4>
+
+<P>Takes the event body as a string, prefixes the date and time,
+and writes it to the log file.
+
+<H4>The PLAIN Method</H4>
+
+<P>Disables time-stamping of the logged data.  Use this when you
+do not want the default SMTLOG time-stamping.
+
+<H4>The STAMP Method</H4>
+
+<P>Enables time-stamping of the logged data.
+
+<H4>The CLOSE Method</H4>
+
+<P>Closes the log file and destroys the thread used to manage it.
+You normally send this event when you end your program.
+
+<H4>Example Of Use</H4>
+
+<P>The <A href="smt12.htm#SMTECHO">SMTECHO</A> agent shows an example of using the Logging
+agent.
+
+<H4>SMTLOG Implementation</H4>
+
+<P>The <A HREF="smtlog.htm">hypertext view</A> of SMTLOG's dialog
+and source code may help to understand how SMTLOG works.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt5.htm">&lt;</A>
+ | <A href="smt7.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

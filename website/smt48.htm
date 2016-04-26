@@ -1,0 +1,43 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>event_wait</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt47.htm">&lt;</A>
+ | <A href="smt49.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="event_wait">&nbsp;</A>
+<H3><A NAME="TOC94"><TT>event_wait</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+void
+event_wait (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Suspends processing of an action module list, and waits for an
+   incoming event. The event is received in 'the_external_event'
+   by the next dialog module. When called in the last module in a
+   list, has no effect. This call has no effect if you raise an
+   exception or supply a value in the_next_event.
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+#if (defined (SMT_TRACE))
+    trace ("event_wait");
+#endif
+    break_wanted = BREAK_WAIT_EVENT;
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt47.htm">&lt;</A>
+ | <A href="smt49.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

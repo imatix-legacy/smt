@@ -1,0 +1,47 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtsimu_sock_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt85.htm">&lt;</A>
+ | <A href="smt87.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtsimu_sock_init">&nbsp;</A>
+<H3><A NAME="TOC132"><TT>smtsimu_sock_init</TT></A></H3>
+<PRE>
+#include "smtsimu.h"
+int
+smtsimu_sock_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Replaces the normal sock_init() function call. Initialises the
+   socket interface as usual, and then initialises the network
+   delay simulation agent. Returns SOCKET_ERROR if there was an
+   error, else returns 0.
+<H4>Source Code - (smtsimu.c)</H4>
+<PRE>
+{
+    /*  Really start sockets                                                 */
+    if (sock_init ())
+        return ((int) SOCKET_ERROR);
+
+    /*  Now initialise the SMTSIMU agent, and return 0 or SOCKET_ERROR       */
+    if (<A href="smt85.htm#smtsimu_init">smtsimu init</A> ())
+        return ((int) SOCKET_ERROR);
+    else
+        return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt85.htm">&lt;</A>
+ | <A href="smt87.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

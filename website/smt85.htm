@@ -1,0 +1,77 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtsimu_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt84.htm">&lt;</A>
+ | <A href="smt86.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtsimu_init">&nbsp;</A>
+<H3><A NAME="TOC131"><TT>smtsimu_init</TT></A></H3>
+<PRE>
+#include "smtsimu.h"
+int
+smtsimu_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT network delay simulation agent. Returns 0
+   if okay, -1 if there was an error. You do not need to call this
+   function explicitly. To use SMTSIMU, include "smtsimu.h" in
+   your program after "smtlib.h". This redefines the standard
+   socket functions to go through SMTSIMU. Sends all errors to the
+   SMTOPER agent.
+<H4>Source Code - (smtsimu.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle to console thread         */
+#   include "smtsimu.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name     Event value      Priority        */
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",      shutdown_event,  SMT_PRIORITY_MAX);
+
+    /*  Public methods supported by this agent                               */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIME_ALARM",    alarm_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIME_ERROR",    error_event,     0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    <A href="smt78.htm#smtoper_init">smtoper init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_OPERATOR, "")) != NULL)
+        operq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that timer agent is running, else start it up               */
+    <A href="smt82.htm#smttime_init">smttime init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_TIMER, "")) != NULL)
+        timeq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Create initial thread                                                */
+    if ((thread = <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "")) != NULL)
+        simuq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Initialise static variables */
+    last_id = 0;
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt84.htm">&lt;</A>
+ | <A href="smt86.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

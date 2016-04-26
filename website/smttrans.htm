@@ -1,0 +1,1386 @@
+<HTML>
+<BODY BACKGROUND="newstone.gif">
+<H1>smttran.c</H1>
+<HR>
+<PRE>
+/*  ----------------------------------------------------------------&lt;Prolog&gt;-
+    Name:       smttran.c
+    Title:      SMT transfer agent
+    Package:    Libero/SMT Kernel 2.x
+
+    Written:    1996/09/05  iMatix SMT kernel team <A HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+    Revised:    2000/01/17
+
+    Synopsis:   Transfers blocks or files via an opened TCP/IP socket.
+
+    Copyright:  Copyright (c) 1991-2000 iMatix Corporation
+    License:    This is free software; you can redistribute it and/or modify
+                it under the terms of the SMT License Agreement as provided
+                in the file LICENSE.TXT.  This software is distributed in
+                the hope that it will be useful, but without any warranty.
+ ------------------------------------------------------------------&lt;/Prolog&gt;-*/
+
+#include "smtdefn.h"                    /*  SMT definitions                  */
+
+
+/*- Definitions -------------------------------------------------------------*/
+
+#define AGENT_NAME   SMT_TRANSFER       /*  Our public name                  */
+#define BUFFER_SIZE  32768L             /*  Buffer for file transmission     */
+
+#define FILETYPE_BINARY   0
+#define FILETYPE_ASCII    1
+
+typedef struct {                        /*  Pipe descriptor                  */
+    long    input_rate;                 /*    Max input transfer rate        */
+    long    output_rate;                /*    Max output transfer rate       */
+    long    input_credit;               /*    Current input credit           */
+    long    output_credit;              /*    Current output credit          */
+} PIPE;
+
+typedef struct {                        /*  Thread context block:            */
+    event_t thread_type;                /*    Thread type indicator          */
+    QID     reply_to;                   /*    Queue to reply to              */
+    sock_t  handle;                     /*    Socket i/o handle              */
+    char   *filename;                   /*    Filename, if used              */
+    qbyte   filesize;                   /*    Total file size                */
+    int     stream;                     /*    File i/o handle, if used       */
+    qbyte   read_size;                  /*    Read size, 0 = GET             */
+    qbyte   write_size;                 /*    Write size, 0 = GET            */
+    qbyte   block_size;                 /*    Block size, 0 = GET            */
+    char   *block_data;                 /*    Block data, or NULL            */
+    char   *block_text;                 /*    Block text data, or NULL       */
+    long    start_slice;                /*    Start of slice, if any         */
+    long    end_slice;                  /*    End slice, if any              */
+    dbyte   filetype;                   /*    Type of file (binary, ascii)   */
+    Bool    send_text;                  /*    Do we send block data or text  */
+    Bool    append;                     /*    Open for output or append?     */
+    qbyte   maxsize;                    /*    Max. accepted file size        */
+    PIPE   *pipe;                       /*    Transfer pipe, if any          */
+} TCB;
+
+typedef struct _TRANREQ {               /*  Request descriptor               */
+    struct _TRANREQ                     /*                                   */
+           *next, *prev;                /*    Doubly-linked list             */
+    QID     reply_to;                   /*    Who sent the request event     */
+    Bool    sending;                    /*    True=PUT, false=GET            */
+    sock_t  handle;                     /*    Socket for output              */
+    qbyte   block_size;                 /*    Block size, 0 = GET            */
+    char   *block_data;                 /*    Block data, or NULL            */
+    Bool    in_header;                  /*    True when doing header         */
+    Bool    in_progress;                /*    Are we processing request?     */
+    Bool    huge_block;                 /*    Are we using huge blocks?      */
+    qbyte   reqid;                      /*    Unique request ID              */
+    PIPE   *pipe;                       /*    Transfer pipe, if any          */
+} TRANREQ;
+
+
+/*- Local function prototypes -----------------------------------------------*/
+
+static TRANREQ *request_create      (THREAD *thread, sock_t handle,
+                                     char **pipe_name);
+static TRANREQ *request_lookup      (qbyte reqid);
+static void     request_destroy     (TRANREQ *request);
+static void     signal_fatal_error  (THREAD *thread);
+static void     put_request_header  (THREAD *thread, TRANREQ *request);
+static void     put_request_body    (THREAD *thread, TRANREQ *request);
+static void     get_request_header  (THREAD *thread, TRANREQ *request);
+static void     get_request_body    (THREAD *thread, TRANREQ *request);
+static void     open_transfer_file  (THREAD *thread, char mode);
+
+
+/*- Global variables used in this source file only --------------------------*/
+
+static TCB
+    *tcb;                               /*  Address thread context block     */
+static QID
+    operq,                              /*  Operator console event queue     */
+    timeq,                              /*  Timer agent event queue          */
+    sockq;                              /*  Socket agent event queue         */
+static NODE
+    requests;                           /*  Request list header              */
+static int
+    fileio_threads = 0;                 /*  Number of child fileio threads   */
+static SYMTAB
+    *pipes = NULL;                      /*  Pipe look-up table               */
+
+
+#include "smttran.d"                    /*  Include dialog data              */
+
+
+/********************   INITIALISE AGENT - ENTRY POINT   *********************/
+
+
+/*  ---------------------------------------------------------------------[&lt;]-
+    Function: smttran_init
+
+    Synopsis: Initialises the SMT transfer agent.  Returns 0 if initialised
+    okay, -1 if there was an error.  The transfer agent reads and writes
+    blocks of data, or complete files, through an open TCP/IP socket.  A
+    block of data is sent/received as a two-byte length header followed
+    by the data block.  Creates an unnamed thread automatically.  Supports
+    these public methods:
+    &lt;Table&gt;
+    PUT_BLOCK    Write a length-specified block to a socket (&lt; 64k)
+    GET_BLOCK    Read a length-specified block from a socket (&lt; 64k)
+    PUT_HUGE     Write a length-specified block to a socket (&lt; 2Gb)
+    GET_HUGE     Read a length-specified block from a socket (&lt; 2Gb)
+    PUT_FILE     Write part or all of a file to a socket
+    GET_FILE     Read part or all of a file from a socket
+    PIPE_CREATE  Create new transfer pipe
+    CLEAR_PIPES  Destroy all transfer pipes
+    COMMIT       Wait until all transfer requests are finished
+    &lt;/Table&gt;
+    Sends errors to the SMTOPER agent; see the doc for reply events.
+    ---------------------------------------------------------------------[&gt;]-*/
+
+int
+smttran_init (void)
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle to various threads        */
+#   include "smttran.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name      Event value      Priority        */
+    /*  Shutdown event comes from Kernel                                      */
+    method_declare (agent, "SHUTDOWN",       shutdown_event,  SMT_PRIORITY_MAX);
+
+    /*  Reply events from socket agent                                       */
+    method_declare (agent, "SOCK_INPUT_OK",  ok_event,          0);
+    method_declare (agent, "SOCK_OUTPUT_OK", ok_event,          0);
+    method_declare (agent, "SOCK_READ_OK",   read_ok_event,     0);
+    method_declare (agent, "SOCK_WRITE_OK",  write_ok_event,    0);
+    method_declare (agent, "SOCK_READH_OK",  readh_ok_event,    0);
+    method_declare (agent, "SOCK_WRITEH_OK", writeh_ok_event,   0);
+    method_declare (agent, "SOCK_CLOSED",    sock_closed_event, 0);
+    method_declare (agent, "SOCK_ERROR",     sock_error_event,  0);
+    method_declare (agent, "SOCK_TIMEOUT",   sock_error_event,  0);
+
+    /*  Reply events from timer agent                                        */
+    method_declare (agent, "TIME_ALARM",     alarm_event,       0);
+    method_declare (agent, "TIME_ERROR",     error_event,       0);
+
+    /*  Public methods supported by this agent                               */
+    declare_put_block    (put_block_event,    0);
+    declare_get_block    (get_block_event,    0);
+    declare_put_huge     (put_huge_event,     0);
+    declare_get_huge     (get_huge_event,     0);
+    declare_put_file     (put_file_event,     0);
+    declare_get_file     (get_file_event,     0);
+    declare_pipe_create  (pipe_create_event,  0);
+    declare_clear_pipes  (clear_pipes_event,  0);
+    declare_tran_commit  (commit_event,       SMT_PRIORITY_MIN);
+
+    /*  Private methods used to pass initial thread events                   */
+    method_declare (agent, "_MASTER",       master_event,       0);
+    method_declare (agent, "_PIPE_MANAGER", pipe_manager_event, 0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    smtoper_init ();
+    if ((thread = thread_lookup (SMT_OPERATOR, "")) != NULL)
+        operq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that socket agent is running, else start it up                */
+    smtsock_init ();
+    if ((thread = thread_lookup (SMT_SOCKET, "")) != NULL)
+        sockq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that timer agent is running, else start it up                 */
+    smttime_init ();
+    if ((thread = thread_lookup (SMT_TIMER, "")) != NULL)
+        timeq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Create initial thread to manage master thread                        */
+    if ((thread = thread_create (AGENT_NAME, "")) != NULL)
+      {
+        SEND (&thread-&gt; queue-&gt; qid, "_MASTER", "");
+        ((TCB *) thread-&gt; tcb)-&gt; thread_type = master_event;
+        ((TCB *) thread-&gt; tcb)-&gt; filename    = NULL;
+      }
+    else
+        return (-1);
+
+    /*  Create initial thread to manage pipes                                */
+    if ((thread = thread_create (AGENT_NAME, "__pipe_manager")) != NULL)
+      {
+        SEND (&thread-&gt; queue-&gt; qid, "_PIPE_MANAGER", "");
+        ((TCB *) thread-&gt; tcb)-&gt; thread_type = pipe_manager_event;
+        ((TCB *) thread-&gt; tcb)-&gt; filename    = NULL;
+      }
+    else
+        return (-1);
+
+    /*  Clear & prepare request queue                                        */
+    node_reset (&requests);
+
+    /*  Create pipe lookup table                                             */
+    pipes = sym_create_table ();
+    
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+
+
+/*************************   <A NAME="initialisethethread">INITIALISE THE THREAD</A>   *************************/
+
+MODULE initialise_the_thread (THREAD *thread)
+{
+    /*  We don't set the_next_event because we expect an argument event      */
+    /*  to supply these.                                                     */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    tcb-&gt; stream     = 0;
+    tcb-&gt; block_data = NULL;
+    tcb-&gt; block_text = NULL;
+    tcb-&gt; send_text  = FALSE;
+}
+
+
+/***********************   <A NAME="getnexteventfromqueue">GET NEXT EVENT FROM QUEUE</A>   ***********************/
+
+MODULE get_next_event_from_queue (THREAD *thread)
+{
+    AGENT   *agent;                     /*  This agent                       */
+    QUEUE   *queue;                     /*  Thread's event queue             */
+    EVENT   *event;                     /*  Event information block          */
+    METHOD  *method;                    /*  Method information block         */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Get next event off queue                                             */
+    queue = thread-&gt; queue;
+    agent = queue-&gt; agent;
+    event = event_iterate (queue, NULL);
+    if (event)
+      {
+        method = method_lookup (agent, event-&gt; name);
+        if (method == NULL)             /*  Not a method we accept           */
+            event_reject (queue, event);
+        else
+          {
+            if (thread-&gt; event)         /*  If thread was sitting on an      */
+              {                         /*    event, release it              */
+                event_destroy (thread-&gt; event);
+                thread-&gt; event = NULL;
+              }
+            /*  Get event off queue; it now belongs to the thread            */
+            thread-&gt; event = event_accept (queue, event);
+            the_next_event = method-&gt; event_number;
+          }
+      }
+    else
+        the_next_event = empty_event;
+}
+
+
+/**************************   <A NAME="createtransferpipe">CREATE TRANSFER PIPE</A>   *************************/
+
+MODULE create_transfer_pipe (THREAD *thread)
+{
+    SYMBOL
+        *pipe_sym;
+    PIPE
+        *pipe;
+    struct_smt_pipe_create
+        *args;
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (pipes)
+      {
+        get_smt_pipe_create (thread-&gt; event-&gt; body, &args);
+        pipe_sym = sym_lookup_symbol (pipes, args-&gt; name);
+        if (pipe_sym)
+            pipe = (PIPE *) pipe_sym-&gt; value;
+        else
+          {
+            pipe_sym = sym_create_symbol (pipes, args-&gt; name, NULL);
+            pipe = mem_alloc (sizeof (PIPE));
+            pipe_sym-&gt; value = (char *) pipe;
+          } 
+        pipe-&gt; input_rate    = args-&gt; input_rate;
+        pipe-&gt; output_rate   = args-&gt; output_rate;
+        pipe-&gt; input_credit  = 0;
+        pipe-&gt; output_credit = 0;
+        free_smt_pipe_create (&args);
+      }
+}
+
+
+/*************************   <A NAME="waitforpiperefresh">WAIT FOR PIPE REFRESH</A>   *************************/
+
+MODULE wait_for_pipe_refresh (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Ask timer to send us an event after one second                       */
+    send_alarm (&timeq, 0, 100, 0, NULL);
+}
+
+
+/***************************   <A NAME="refreshallpipes">REFRESH ALL PIPES</A>   ***************************/
+
+MODULE refresh_all_pipes (THREAD *thread)
+{
+    SYMBOL
+        *pipe_sym;
+    PIPE
+        *pipe;
+        
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    for (pipe_sym = pipes-&gt; symbols; pipe_sym; pipe_sym = pipe_sym-&gt; next)
+      {
+        pipe = (PIPE *) pipe_sym-&gt; value;
+
+        /*  Credits can be negative, but never greater than the rate         */
+        pipe-&gt; input_credit += pipe-&gt; input_rate;
+        if (pipe-&gt; input_credit &gt; pipe-&gt; input_rate)
+            pipe-&gt; input_credit = pipe-&gt; input_rate;
+
+        pipe-&gt; output_credit += pipe-&gt; output_rate;
+        if (pipe-&gt; output_credit &gt; pipe-&gt; output_rate)
+            pipe-&gt; output_credit = pipe-&gt; output_rate;
+      }
+}
+
+
+/***********************   <A NAME="destroyalltransferpipes">DESTROY ALL TRANSFER PIPES</A>   **********************/
+
+MODULE destroy_all_transfer_pipes (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    sym_delete_table (pipes);
+    pipes = NULL;                       /*  Pipes no longer available        */
+}
+
+
+/************************   <A NAME="createputblockrequest">CREATE PUT BLOCK REQUEST</A>   ***********************/
+
+MODULE create_put_block_request (THREAD *thread)
+{
+    dbyte
+        block_size;                     /*  Size of data block to write      */
+    char
+        *block_data = NULL,             /*  Block of data to write           */
+        *pipe_name = NULL;              /*  Pipe for i/o                     */
+    sock_t
+        handle;                         /*  Socket for output                */
+    TRANREQ
+        *request;                       /*  Newly-created request            */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Get arguments from message                                           */
+    exdr_read (thread-&gt; event-&gt; body, SMT_TRAN_PUTB,
+               &handle, &block_size, &block_data, &pipe_name);
+
+    if ((request = request_create (thread, handle, &pipe_name)) != NULL)
+      {
+        request-&gt; block_size = block_size;
+        request-&gt; block_data = block_data;
+        request-&gt; sending    = TRUE;
+      }
+}
+
+
+/*  -------------------------------------------------------------------------
+ *  request_create
+ *
+ *  Creates a new request, and initialises it to empty.
+ */
+
+static TRANREQ *
+request_create (THREAD *thread, sock_t handle, char **pipe_name)
+{
+    static qbyte
+        reqid = 0;                      /*  Cyclic request id                */
+    TRANREQ
+        *request;                       /*  Request we create                */
+    SYMBOL
+        *pipe_sym;
+
+    request = node_create (requests.prev, sizeof (TRANREQ));
+    if (request)
+      {
+        /*  Initialise the request with default values                       */
+        request-&gt; reply_to    = thread-&gt; event-&gt; sender;
+        request-&gt; handle      = handle;
+        request-&gt; block_size  = 0;
+        request-&gt; block_data  = NULL;
+        request-&gt; in_header   = TRUE;
+        request-&gt; in_progress = FALSE;
+        request-&gt; reqid       = reqid++;
+        request-&gt; huge_block  = FALSE;
+        request-&gt; pipe        = NULL;
+
+        /*  Get pipe to use, if any                                          */
+        if (pipes && **pipe_name)
+          {
+            pipe_sym = sym_lookup_symbol (pipes, *pipe_name);
+            if (pipe_sym)
+                request-&gt; pipe = (PIPE *) pipe_sym-&gt; value;
+          }
+      }
+    mem_free (*pipe_name);
+    return (request);
+}
+
+
+/************************   <A NAME="creategetblockrequest">CREATE GET BLOCK REQUEST</A>   ***********************/
+
+MODULE create_get_block_request (THREAD *thread)
+{
+    sock_t
+        handle;                         /*  Socket for output                */
+    TRANREQ
+        *request;                       /*  Newly-created request            */
+    char
+        *pipe_name = NULL;              /*  Pipe for i/o                     */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Get arguments from message                                           */
+    exdr_read (thread-&gt; event-&gt; body, SMT_TRAN_GETB, &handle, &pipe_name);
+    if ((request = request_create (thread, handle, &pipe_name)) != NULL)
+        request-&gt; sending = FALSE;
+}
+
+
+/************************   <A NAME="createputhugerequest">CREATE PUT HUGE REQUEST</A>   ************************/
+
+MODULE create_put_huge_request (THREAD *thread)
+{
+    qbyte
+        block_size;                     /*  Size of data block to write      */
+    char
+        *block_data = NULL,             /*  Block of data to write           */
+        *pipe_name = NULL;              /*  Pipe for i/o                     */
+    sock_t
+        handle;                         /*  Socket for output                */
+    TRANREQ
+        *request;                       /*  Newly-created request            */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Get arguments from message                                           */
+    exdr_read (thread-&gt; event-&gt; body, SMT_TRAN_PUTH,
+               &handle, &block_size, &block_data, &pipe_name);
+
+    if ((request = request_create (thread, handle, &pipe_name)) != NULL)
+      {
+        request-&gt; block_size = block_size;
+        request-&gt; block_data = block_data;
+        request-&gt; sending    = TRUE;
+        request-&gt; huge_block = TRUE;
+      }
+}
+
+
+/************************   <A NAME="creategethugerequest">CREATE GET HUGE REQUEST</A>   ************************/
+
+MODULE create_get_huge_request (THREAD *thread)
+{
+    sock_t
+        handle;                         /*  Socket for output                */
+    TRANREQ
+        *request;                       /*  Newly-created request            */
+    char
+        *pipe_name = NULL;              /*  Pipe for i/o                     */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Get arguments from message                                           */
+    exdr_read (thread-&gt; event-&gt; body, SMT_TRAN_GETH, &handle, &pipe_name);
+    if ((request = request_create (thread, handle, &pipe_name)) != NULL)
+      {
+        request-&gt; sending    = FALSE;
+        request-&gt; huge_block = TRUE;
+      }
+}
+
+
+/***********************   <A NAME="processtransferrequests">PROCESS TRANSFER REQUESTS</A>   ***********************/
+
+MODULE process_transfer_requests (THREAD *thread)
+{
+    TRANREQ
+        *request;                       /*  Request we process               */
+    Bool
+        did_io = FALSE;                /*  True if we did a put or get      */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    for (request  = requests.next;
+         request != (TRANREQ *) &requests;
+         request  = request-&gt; next)
+      {
+        if (request-&gt; in_progress)
+            continue;                   /*  Ignore requests in progress      */
+
+        if (request-&gt; sending)
+          {
+            if (request-&gt; pipe == NULL
+            ||  request-&gt; pipe-&gt; output_credit &gt; 0)
+              {
+                /*  Send header and body one after the other                 */
+                put_request_header (thread, request);
+                put_request_body   (thread, request);
+
+                request-&gt; in_progress = TRUE;
+                did_io = TRUE;
+              }  
+          }
+        else                            /*  Otherwise we want GET            */
+            if (request-&gt; pipe == NULL
+            ||  request-&gt; pipe-&gt; input_credit &gt; 0)
+              {
+                if (request-&gt; in_header)
+                    get_request_header (thread, request);
+                else
+                    get_request_body   (thread, request);
+
+                request-&gt; in_progress = TRUE;
+                did_io = TRUE;
+              }
+      }
+    /*  All i/o is waiting for a pipe to be freed - loop slowly              */
+    if (!did_io)
+        send_alarm (&timeq, 0, 50, 6, (byte *) "EMPTY");
+}
+
+
+static void
+put_request_header (THREAD *thread, TRANREQ *request)
+{
+    dbyte
+        dsize;                          /*  Block size in network order      */
+    qbyte
+        qsize;                          /*  Huge size in network order       */
+
+    /*  Write 2/4-byte block header in network format                        */
+    if (request-&gt; huge_block)
+      {
+        qsize = htonl (request-&gt; block_size);
+        send_writeh (&sockq, 0, request-&gt; handle, 4,
+                    (byte *) &qsize, request-&gt; reqid);
+        if (request-&gt; pipe)
+            request-&gt; pipe-&gt; output_credit -= 4;
+      }
+    else
+      {
+        dsize = htons ((dbyte) request-&gt; block_size);
+        send_write (&sockq, 0, request-&gt; handle, 2,
+                   (byte *) &dsize, request-&gt; reqid);
+        if (request-&gt; pipe)
+            request-&gt; pipe-&gt; output_credit -= 2;
+      }
+}
+
+
+static void
+put_request_body (THREAD *thread, TRANREQ *request)
+{
+    if (request-&gt; huge_block)
+        send_writeh (
+            &sockq,                         /*  Socket agent queue           */
+            0,                              /*  Timeout for transmission     */
+            request-&gt; handle,               /*  Socket to send to            */
+            request-&gt; block_size,           /*  Amount of data to send       */
+            (byte *) request-&gt; block_data,  /*  Address of data to send      */
+            request-&gt; reqid);               /*  Request tag                  */
+    else
+        send_write (
+            &sockq,
+            0,
+            request-&gt; handle,
+            (dbyte)  request-&gt; block_size,
+            (byte *) request-&gt; block_data,
+            request-&gt; reqid);
+
+    if (request-&gt; pipe)
+        request-&gt; pipe-&gt; output_credit -= request-&gt; block_size;
+}
+
+
+static void
+get_request_header (THREAD *thread, TRANREQ *request)
+{
+    if (request-&gt; huge_block)
+        send_readh (
+            &sockq,                     /*  Socket agent queue               */
+            0,                          /*  Timeout for transmission         */
+            request-&gt; handle,           /*  Socket to read from              */
+            4, 4,                       /*  Read exactly 4 bytes             */
+            request-&gt; reqid);           /*  Request tag                      */
+    else
+        send_read (
+            &sockq,                     /*  Socket agent queue               */
+            0,                          /*  Timeout for transmission         */
+            request-&gt; handle,           /*  Socket to read from              */
+            2, 2,                       /*  Read exactly 2 bytes             */
+            request-&gt; reqid);           /*  Request tag                      */
+}
+
+
+static void
+get_request_body (THREAD *thread, TRANREQ *request)
+{
+    if (request-&gt; huge_block)
+        send_readh (
+            &sockq,                     /*  Socket agent queue               */
+            0,                          /*  Timeout for transmission         */
+            request-&gt; handle,           /*  Socket to read from              */
+            request-&gt; block_size,       /*  Max amount of data to read       */
+            request-&gt; block_size,       /*  Min amount of data to read       */
+            request-&gt; reqid);           /*  Request tag                      */
+    else
+        send_read (
+            &sockq,
+            0,
+            request-&gt; handle,
+            (dbyte) request-&gt; block_size,
+            (dbyte) request-&gt; block_size,
+            request-&gt; reqid);
+}
+
+
+/***********************   <A NAME="updaterequestafterread">UPDATE REQUEST AFTER READ</A>   ***********************/
+
+MODULE update_request_after_read (THREAD *thread)
+{
+    dbyte
+        netsize,                        /*  Block size in network order      */
+        *netsize_addr = &netsize;
+    qbyte
+        reqid;                          /*  Request ID back from SMTSOCK     */
+    TRANREQ
+        *request;                       /*  Request we process               */
+    byte
+        *body = NULL;                   /*  Received message body            */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Pick up reqid from event body, encoded as SMT_SOCK_READ_OK           */
+    exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_READ_OK,
+               NULL, NULL, NULL, NULL, &reqid);
+    if ((request = request_lookup (reqid)) == NULL)
+         return;                        /*  Something garbage - ignore it    */
+
+    /*  We either just received the header or the body                       */
+    if (request-&gt; in_header)
+      {
+        /*  Pick up block size from event body encoded as SMT_SOCK_READ_OK   */
+        exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_READ_OK,
+                   NULL, NULL, NULL, &netsize_addr, NULL);
+        request-&gt; block_size  = ntohs (netsize);
+        request-&gt; in_header   = FALSE;
+        request-&gt; in_progress = FALSE;
+      }
+    else
+      {
+        /*  Get data from socket agent reply message                         */
+        exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_READ_OK,
+                   NULL, NULL, &request-&gt; block_size, &body, NULL);
+
+        /*  Send it back to the calling program                              */
+        send_tran_getb_ok (&request-&gt; reply_to,
+                          (dbyte) request-&gt; block_size, body);
+
+        request_destroy (request);
+        mem_free (body);
+      }
+}
+
+
+/*  Returns in-progress request for handle, or NULL if none found            */
+
+static TRANREQ
+*request_lookup (qbyte reqid)
+{
+    TRANREQ
+        *request;                       /*  Request we process               */
+
+    for (request  = requests.next;
+         request != (TRANREQ *) &requests;
+         request  = request-&gt; next)
+      {
+        if (request-&gt; reqid == reqid)
+            return (request);           /*  We found the request             */
+      }
+    return (NULL);
+}
+
+static void
+request_destroy (TRANREQ *request)
+{
+    mem_free (request-&gt; block_data);
+    node_destroy (request);
+}
+
+
+/***********************   <A NAME="updaterequestafterreadh">UPDATE REQUEST AFTER READH</A>   **********************/
+
+MODULE update_request_after_readh (THREAD *thread)
+{
+    qbyte
+        netsize,                        /*  Block size in network order      */
+        *netsize_addr = &netsize,
+        reqid;                          /*  Request ID back from SMTSOCK     */
+    TRANREQ
+        *request;                       /*  Request we process               */
+    byte
+        *body = NULL;                   /*  Received message body            */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Pick up reqid from event body, encoded as SMT_SOCK_READH_OK          */
+    exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_READH_OK,
+               NULL, NULL, NULL, NULL, &reqid);
+    if ((request = request_lookup (reqid)) == NULL)
+         return;                        /*  Something garbage - ignore it    */
+
+    /*  We either just received the header or the body                       */
+    if (request-&gt; in_header)
+      {
+        /*  Pick up block size from event body encoded as SMT_SOCK_READH_OK  */
+        exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_READH_OK,
+                   NULL, NULL, NULL, &netsize_addr, NULL);
+        request-&gt; block_size  = ntohl (netsize);
+        request-&gt; in_header   = FALSE;
+        request-&gt; in_progress = FALSE;
+      }
+    else
+      {
+        /*  Get data from socket agent reply message                         */
+        exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_READH_OK,
+                   NULL, NULL, &request-&gt; block_size, &body, NULL);
+
+        /*  Send it back to the calling program                              */
+        send_tran_geth_ok (&request-&gt; reply_to, request-&gt; block_size, body);
+
+        request_destroy (request);
+        mem_free (body);
+      }
+}
+
+
+/***********************   <A NAME="updaterequestafterwrite">UPDATE REQUEST AFTER WRITE</A>   **********************/
+
+MODULE update_request_after_write (THREAD *thread)
+{
+    qbyte
+        reqid;                          /*  Request ID back from SMTSOCK     */
+    TRANREQ
+        *request;                       /*  Request we process               */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Pick up reqid from event body, encoded as SMT_SOCK_OK                */
+    exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_OK, NULL, &reqid);
+    if ((request = request_lookup (reqid)) == NULL)
+         return;                        /*  Something garbage - ignore it    */
+
+    /*  We either just sent the header or the body                           */
+    if (request-&gt; in_header)
+        request-&gt; in_header = FALSE;
+    else
+      {
+        /*  Send confirmation back to the calling program                    */
+        send_tran_putb_ok (&request-&gt; reply_to,
+                          (dbyte) request-&gt; block_size);
+        request_destroy (request);
+      }
+}
+
+
+/**********************   <A NAME="updaterequestafterwriteh">UPDATE REQUEST AFTER WRITEH</A>   **********************/
+
+MODULE update_request_after_writeh (THREAD *thread)
+{
+    qbyte
+        reqid;                          /*  Request ID back from SMTSOCK     */
+    TRANREQ
+        *request;                       /*  Request we process               */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Pick up reqid from event body, encoded as SMT_SOCK_OK                */
+    exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_OK, NULL, &reqid);
+    if ((request = request_lookup (reqid)) == NULL)
+         return;                        /*  Something garbage - ignore it    */
+
+    /*  We either just sent the header or the body                           */
+    if (request-&gt; in_header)
+        request-&gt; in_header = FALSE;
+    else
+      {
+        /*  Send confirmation back to the calling program                    */
+        send_tran_puth_ok (&request-&gt; reply_to, request-&gt; block_size);
+        request_destroy (request);
+      }
+}
+
+
+/**********************   <A NAME="updaterequestafterclosed">UPDATE REQUEST AFTER CLOSED</A>   **********************/
+
+MODULE update_request_after_closed (THREAD *thread)
+{
+    sock_t
+        handle;                         /*  Socket closed                    */
+    qbyte
+        reqid;                          /*  Request ID back from SMTSOCK     */
+    TRANREQ
+        *request;                       /*  Request we process               */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Pick up reqid from event body encoded as SMT_SOCK_READ_OK            */
+    exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_READ_OK,
+               NULL, &handle, NULL, NULL, &reqid);
+    if ((request = request_lookup (reqid)) == NULL)
+         return;                        /*  Something garbage - ignore it    */
+
+    send_tran_closed (&request-&gt; reply_to);
+    for (request  = requests.next;
+         request != (TRANREQ *) &requests;
+         request  = request-&gt; next)
+      {
+        /*  Destroy all requests that refer to this (closed) socket          */
+        if (request-&gt; handle == handle)
+          {
+            request = request-&gt; prev;
+            request_destroy (request-&gt; next);
+          }
+      }
+}
+
+
+/***********************   <A NAME="updaterequestaftererror">UPDATE REQUEST AFTER ERROR</A>   **********************/
+
+MODULE update_request_after_error (THREAD *thread)
+{
+    qbyte
+        reqid;                          /*  Request ID back from SMTSOCK     */
+    TRANREQ
+        *request;                       /*  Request we process               */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Pick up reqid from event body, encoded as SMT_SOCK_ERROR             */
+    exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_ERROR, NULL, NULL, &reqid);
+    if ((request = request_lookup (reqid)) == NULL)
+         return;                        /*  Something garbage - ignore it    */
+
+    send_tran_error (&request-&gt; reply_to, (char *) thread-&gt; event-&gt; body);
+    request_destroy (request);
+}
+
+
+/*************************   <A NAME="createputfilethread">CREATE PUT FILE THREAD</A>   ************************/
+
+MODULE create_put_file_thread (THREAD *thread)
+{
+    struct_smt_tran_putf
+        *params;
+    THREAD
+        *child;                         /*  Handle to child thread           */
+    SYMBOL
+        *pipe_sym;
+        
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    get_smt_tran_putf (thread-&gt; event-&gt; body, &params);
+
+    child = thread_create (AGENT_NAME, "");
+    ASSERT (child);
+    tcb = child-&gt; tcb;
+
+    tcb-&gt; thread_type = put_file_event;
+    tcb-&gt; filename    = mem_strdup (clean_path (params-&gt; filename));
+    tcb-&gt; start_slice = params-&gt; start;
+    tcb-&gt; end_slice   = params-&gt; end;
+    tcb-&gt; filetype    = params-&gt; filetype;
+    tcb-&gt; handle      = params-&gt; socket;
+    tcb-&gt; append      = FALSE;
+    tcb-&gt; maxsize     = 0xFFFFFFFFUL;
+    tcb-&gt; reply_to    = thread-&gt; event-&gt; sender;
+    tcb-&gt; pipe        = NULL;
+
+    /*  Get pipe to use, if any                                          */
+    if (pipes && *params-&gt; pipe)
+      {
+        pipe_sym = sym_lookup_symbol (pipes, params-&gt; pipe);
+        if (pipe_sym)
+            tcb-&gt; pipe = (PIPE *) pipe_sym-&gt; value;
+      }
+
+#if (defined (MSDOS_FILESYSTEM))
+    /*  On DOS-based file systems, text files already contain CRLFs, and
+     *  can thus be handled as binary files.
+     */   
+    tcb-&gt; filetype = FILETYPE_BINARY;
+#endif
+
+    event_send (
+        &child-&gt; queue-&gt; qid,           /*  Send to child thread queue       */
+        &thread-&gt; event-&gt; sender,       /*  Queue for reply                  */
+        "PUT_FILE",                     /*  Name of event to send            */
+        NULL, 0,                        /*  Event body and size              */
+        NULL, NULL, NULL,               /*  No response events               */
+        0);                             /*  No timeout                       */
+
+    fileio_threads++;
+    free_smt_tran_putf (&params);
+}
+
+
+/*************************   <A NAME="creategetfilethread">CREATE GET FILE THREAD</A>   ************************/
+
+MODULE create_get_file_thread (THREAD *thread)
+{
+    struct_smt_tran_getf
+        *params;
+    THREAD
+        *child;                         /*  Handle to child thread           */
+    SYMBOL
+        *pipe_sym;
+        
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    get_smt_tran_getf (thread-&gt; event-&gt; body, &params);
+
+    child = thread_create (AGENT_NAME, "");
+    ASSERT (child);
+    tcb = child-&gt; tcb;
+
+    tcb-&gt; thread_type = get_file_event;
+    tcb-&gt; filename    = mem_strdup (clean_path (params-&gt; filename));
+    tcb-&gt; start_slice = params-&gt; start;
+    tcb-&gt; end_slice   = params-&gt; end;
+    tcb-&gt; filetype    = params-&gt; filetype;
+    tcb-&gt; handle      = params-&gt; socket;
+    tcb-&gt; append      = params-&gt; append;
+    tcb-&gt; maxsize     = params-&gt; maxsize;
+    tcb-&gt; reply_to    = thread-&gt; event-&gt; sender;
+    tcb-&gt; pipe        = NULL;
+
+    /*  Get pipe to use, if any                                          */
+    if (pipes && *params-&gt; pipe)
+      {
+        pipe_sym = sym_lookup_symbol (pipes, params-&gt; pipe);
+        if (pipe_sym)
+            tcb-&gt; pipe = (PIPE *) pipe_sym-&gt; value;
+      }
+
+    event_send (
+        &child-&gt; queue-&gt; qid,           /*  Send to child thread queue       */
+        &thread-&gt; event-&gt; sender,       /*  Queue for reply                  */
+        "GET_FILE",                     /*  Name of event to send            */
+        NULL, 0,                        /*  Event body and size              */
+        NULL, NULL, NULL,               /*  No response events               */
+        0);                             /*  No timeout                       */
+
+    fileio_threads++;
+    free_smt_tran_getf (&params);
+}
+
+
+/**************************   <A NAME="openfileforoutput">OPEN FILE FOR OUTPUT</A>   *************************/
+
+MODULE open_file_for_output (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; append)
+        open_transfer_file (thread, 'a');
+    else
+        open_transfer_file (thread, 'o');
+}
+
+static void
+open_transfer_file (THREAD *thread, char mode)
+{
+    int
+        open_mode;
+    
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+    if (mode == 'i')                    /*  Input                            */
+        open_mode = O_RDONLY;
+    else
+
+    if (mode == 'o')                    /*  Output                           */
+        open_mode = O_WRONLY | O_CREAT | O_TRUNC;
+    else
+    if (mode == 'a')                    /*  Append                           */
+        open_mode = O_WRONLY | O_CREAT | O_APPEND;
+    else
+        return;                         /*  Error                            */
+        
+    tcb-&gt; filesize = 0;
+    tcb-&gt; stream   = lazy_open (tcb-&gt; filename, open_mode);
+    if (io_completed)
+      {
+        if (tcb-&gt; stream &lt; 0)           /*  If the open failed, send error   */
+          {                             /*    to console, and terminate      */
+            sendfmt (&operq, "ERROR",
+                "smttran: cannot open '%s' for '%c'", tcb-&gt; filename, mode);
+            signal_fatal_error (thread);
+          }
+        else
+        if (tcb-&gt; start_slice &gt; 0)      /*  Position at start of slice?      */
+            lseek (tcb-&gt; stream, tcb-&gt; start_slice, SEEK_SET);
+      }
+}
+
+local
+signal_fatal_error (THREAD *thread)
+{
+    senderr (&operq);
+    raise_exception (exception_event);
+    send_tran_error (&tcb-&gt; reply_to, strerror (errno));
+}
+
+
+/**************************   <A NAME="openfileforinput">OPEN FILE FOR INPUT</A>   **************************/
+
+MODULE open_file_for_input (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    open_transfer_file (thread, 'i');
+}
+
+
+/*************************   <A NAME="readfiledatabuffer">READ FILE DATA BUFFER</A>   *************************/
+
+MODULE read_file_data_buffer (THREAD *thread)
+{
+    long
+        read_size;                      /*  Amount of data read/to read      */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; end_slice &gt; 0)            /*  End of slice defined?            */
+      {
+        read_size = tcb-&gt; end_slice - tcb-&gt; filesize + 1;
+        if (read_size &lt; 0)
+            read_size = 0;
+        else
+        if (read_size &gt; BUFFER_SIZE)
+            read_size = BUFFER_SIZE;
+      }
+    else
+        read_size = BUFFER_SIZE;
+
+    /*  If read_size is 0, we're finished reading                            */
+    if (read_size &gt; 0)
+      {
+        mem_strfree (&tcb-&gt; block_data);
+        tcb-&gt; block_size = read_size;
+        tcb-&gt; block_data = mem_alloc ((dbyte) read_size);
+        read_size = lazy_read (tcb-&gt; stream, tcb-&gt; block_data, 
+                              (int) read_size);
+      }
+    if (io_completed)
+      {
+        if (read_size == 0)
+            raise_exception (end_of_file_event);
+        else
+        if (read_size == -1)            /*  If the read failed, send error   */
+          {                             /*    to console, and terminate      */
+            sendfmt (&operq, "ERROR",
+                     "smttran: could not read from %s", tcb-&gt; filename);
+            signal_fatal_error (thread);
+          }
+        else
+            tcb-&gt; read_size = read_size;
+      }
+}
+
+
+/**********************   <A NAME="convertasciitonetifreqd">CONVERT ASCII TO NET IF REQD</A>   *********************/
+
+MODULE convert_ascii_to_net_if_reqd (THREAD *thread)
+{
+    qbyte
+        text_size;                      /*  Size of text block               */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; filetype == FILETYPE_BINARY)
+      {
+        tcb-&gt; write_size = tcb-&gt; read_size;
+        tcb-&gt; send_text  = FALSE;
+      }
+    else
+      {
+        /*  Allocate text block, in the worst case = all LFs -&gt; CRLFs        */
+        mem_strfree (&tcb-&gt; block_text);
+        text_size = tcb-&gt; read_size * 2;    
+        tcb-&gt; block_text = mem_alloc ((size_t) text_size);
+        if (tcb-&gt; block_text)
+          {
+            /*  Convert data to 'text'                                       */
+            tcb-&gt; write_size = file_set_eoln (tcb-&gt; block_text,
+                                              tcb-&gt; block_data,
+                                              (dbyte) tcb-&gt; read_size, TRUE);
+            tcb-&gt; send_text = TRUE;
+           }
+        else
+          {
+            sendfmt (&operq, "ERROR",
+                     "smttran: could not allocate text buffer (%ld bytes)",
+                     text_size);
+            signal_fatal_error (thread);
+          }
+      }
+}
+
+
+/**************************   <A NAME="putbuffertosocket">PUT BUFFER TO SOCKET</A>   *************************/
+
+MODULE put_buffer_to_socket (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; pipe == NULL
+    ||  tcb-&gt; pipe-&gt; output_credit &gt; 0)
+      {
+        tcb-&gt; filesize += tcb-&gt; write_size;
+        send_write (&sockq, 0, tcb-&gt; handle, (word) tcb-&gt; write_size,
+                   (byte *) (tcb-&gt; send_text?
+                             tcb-&gt; block_text: tcb-&gt; block_data), 0);
+        if (tcb-&gt; pipe)
+            tcb-&gt; pipe-&gt; output_credit -= tcb-&gt; write_size;
+      }
+    else
+        send_alarm (&timeq, 0, 50, 0, NULL);
+}
+
+
+/*************************   <A NAME="getbufferfromsocket">GET BUFFER FROM SOCKET</A>   ************************/
+
+MODULE get_buffer_from_socket (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; pipe == NULL
+    ||  tcb-&gt; pipe-&gt; input_credit &gt; 0)
+        /*  Read buffer from socket, we expect up to BUFFER_MAX bytes,       */
+        /*  but anything will do.                                            */
+        send_read (&sockq, 0, tcb-&gt; handle, BUFFER_SIZE, 1, 0);
+    else
+        send_alarm (&timeq, 0, 50, 0, NULL);
+}
+
+
+/**********************   <A NAME="convertnettoasciiifreqd">CONVERT NET TO ASCII IF REQD</A>   *********************/
+
+MODULE convert_net_to_ascii_if_reqd (THREAD *thread)
+{
+    dbyte
+        read_size;
+    
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; filetype == FILETYPE_BINARY)
+      {
+        mem_strfree (&tcb-&gt; block_data);
+        exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_READ_OK,
+                   NULL, NULL, &read_size, &tcb-&gt; block_data, NULL);
+        tcb-&gt; write_size = read_size;
+      }
+    else
+      {
+        mem_strfree (&tcb-&gt; block_text);
+        exdr_read (thread-&gt; event-&gt; body, SMT_SOCK_READ_OK,
+                   NULL, NULL, &read_size, &tcb-&gt; block_text, NULL);
+        mem_strfree (&tcb-&gt; block_data);
+        tcb-&gt; block_data = mem_alloc (read_size);
+        if (tcb-&gt; block_text)
+            tcb-&gt; write_size = file_set_eoln (tcb-&gt; block_data,
+                                              tcb-&gt; block_text,
+                                              read_size, FALSE);
+        else
+          {
+            sendfmt (&operq, "ERROR",
+                     "smttran: could not allocate text buffer (%ld bytes)",
+                     read_size);
+            signal_fatal_error (thread);
+          }
+      }
+    if (tcb-&gt; pipe)
+        tcb-&gt; pipe-&gt; input_credit -= read_size;
+}
+
+
+/*************************   <A NAME="writefiledatabuffer">WRITE FILE DATA BUFFER</A>   ************************/
+
+MODULE write_file_data_buffer (THREAD *thread)
+{
+    int
+        rc = 0,                         /*  Return code from write           */
+        write_size;                     /*  Actual amount of data to write   */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    write_size = (int) tcb-&gt; write_size;
+    if (write_size + tcb-&gt; filesize &gt; tcb-&gt; maxsize)
+        write_size = (int) (tcb-&gt; maxsize - tcb-&gt; filesize);
+
+    tcb-&gt; filesize += tcb-&gt; write_size;
+    if (write_size &gt; 0)                 /*  Don't exceed limits              */ 
+        rc = lazy_write (tcb-&gt; stream, tcb-&gt; block_data, (size_t) write_size);
+            
+    if (io_completed)
+      {
+        if (rc &lt; 0)                     /*  If the read failed, send error   */
+          {                             /*    to console, and terminate      */
+            sendfmt (&operq, "ERROR",
+                     "smttran: could not write to %s", tcb-&gt; filename);
+            signal_fatal_error (thread);
+          }
+      }
+}
+
+
+/**************************   <A NAME="signalputfileokay">SIGNAL PUT FILE OKAY</A>   *************************/
+
+MODULE signal_put_file_okay (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    send_tran_putf_ok (&tcb-&gt; reply_to, tcb-&gt; filesize);
+    fileio_threads--;                   /*  Request is finished              */
+}
+
+
+/**************************   <A NAME="signalgetfileokay">SIGNAL GET FILE OKAY</A>   *************************/
+
+MODULE signal_get_file_okay (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    send_tran_getf_ok (&tcb-&gt; reply_to, tcb-&gt; filesize);
+    fileio_threads--;                   /*  Request is finished              */
+}
+
+
+/**************************   <A NAME="signalsocketclosed">SIGNAL SOCKET CLOSED</A>   *************************/
+
+MODULE signal_socket_closed (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    send_tran_closed (&tcb-&gt; reply_to);
+    fileio_threads--;                   /*  Request is finished              */
+}
+
+
+/**************************   <A NAME="signalsocketerror">SIGNAL SOCKET ERROR</A>   **************************/
+
+MODULE signal_socket_error (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    send_tran_error (&tcb-&gt; reply_to, (char *) thread-&gt; event-&gt; body);
+    fileio_threads--;                  /*  Request is finished              */
+}
+
+
+/************************   <A NAME="okayifnorequestsleft">OKAY IF NO REQUESTS LEFT</A>   ***********************/
+
+MODULE okay_if_no_requests_left (THREAD *thread)
+{
+    static QID
+        commit_requestor = { 0, 0 };
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    /*  Since commit events come from various places, we will store the QID  */
+    /*  of the first one to come in, and use that for reply events.  When    */
+    /*  we send an ok event, we'll reset the requestor queue id.  This is    */
+    /*  not the best solution, but will have to do.                          */
+
+    if (commit_requestor.ident == 0)
+        commit_requestor = thread-&gt; event-&gt; sender;
+
+    /*  If no requests left, signal all closed to sender, else send a        */
+    /*  timer alarm event to ourselves to cause the dialog to loop.          */
+    if (requests.next  == &requests
+    &&  fileio_threads == 0)
+      {
+        send_tran_closed (&commit_requestor);
+        commit_requestor.ident = 0;
+      }
+    else
+        /*  Ask timer to send us an event after one second                   */
+        send_alarm (&timeq, 0, 100, 7, (byte *) "COMMIT");
+}
+
+
+/*************************   <A NAME="regeneratealarmevent">REGENERATE ALARM EVENT</A>   ************************/
+
+MODULE regenerate_alarm_event (THREAD *thread)
+{
+    struct_smt_time_reply
+        *reply;                         /*  Reply from timer                 */
+        
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+    get_smt_time_reply (thread-&gt; event-&gt; body, &reply);
+    if (streq ((char *) reply-&gt; tag_data, "COMMIT"))
+        the_next_event = commit_event;
+    else
+        the_next_event = empty_event; 
+        
+    free_smt_time_reply (&reply);
+}
+
+
+/***************************   <A NAME="checkthreadtype">CHECK THREAD TYPE</A>   ***************************/
+
+MODULE check_thread_type (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+    the_next_event = tcb-&gt; thread_type;
+}
+
+
+/**************************   <A NAME="destroyallrequests">DESTROY ALL REQUESTS</A>   *************************/
+
+MODULE destroy_all_requests (THREAD *thread)
+{
+    while (requests.next != &requests)
+        request_destroy (requests.next);
+}
+
+
+/*************************   <A NAME="terminatethethread">TERMINATE THE THREAD</A>   **************************/
+
+MODULE terminate_the_thread (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; stream)
+        close (tcb-&gt; stream);
+
+    mem_strfree (&tcb-&gt; filename);
+    mem_strfree (&tcb-&gt; block_data);
+    mem_strfree (&tcb-&gt; block_text);
+    the_next_event = terminate_event;
+}
+
+</PRE>
+<HR>
+<P>Generated by <A HREF="http://www.imatix.com">
+Framer 1.0 &#169; 1997 iMatix</A></P>
+</BODY></HTML>

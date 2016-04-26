@@ -1,0 +1,131 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtftpc_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt73.htm">&lt;</A>
+ | <A href="smt75.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtftpc_init">&nbsp;</A>
+<H3><A NAME="TOC120"><TT>smtftpc_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int
+smtftpc_init (char *p_rootdir)          /*  Server root directory            */
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the FTP control agent. Returns 0 if initialised
+   okay, -1 if there was an error.
+<H4>Source Code - (smtftpc.c)</H4>
+<PRE>
+{
+    AGENT  *agent;                      /*  Handle for our agent             */
+    THREAD *thread;                     /*  Handle to various threads        */
+
+#   include "smtftpc.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name      Event value     Priority        */
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",       shutdown_event,
+                                             SMT_PRIORITY_MAX);
+
+    /*  Restart can come from control panel and HTTP agent                   */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "RESTART",        restart_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "RELOAD",         reload_event,    0);
+
+    /*  Reply events from socket agent                                       */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_INPUT_OK",  input_ok_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_OUTPUT_OK", ok_event,           0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_READ_OK",   ok_event,           0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_WRITE_OK",  ok_event,           0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_CLOSED",    sock_closed_event,  0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_ERROR",     sock_error_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SOCK_TIMEOUT",   sock_timeout_event, 0);
+
+    /*  Reply events from timer agent                                        */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIME_ALARM",     timeout_event,
+                                             SMT_PRIORITY_LOW);
+    /*  Reply events from FTP data agent                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "FTPD_CONNECTED", connected_event,
+                                             SMT_PRIORITY_LOW);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "FTPD_ERROR",     error_event,
+                                             SMT_PRIORITY_LOW);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "FTPD_END",       end_event,
+                                             SMT_PRIORITY_HIGH);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "FTPD_PASS_OK",   ok_event,
+                                             SMT_PRIORITY_LOW);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "FTPD_ABORTED",   aborted_event,
+                                             SMT_PRIORITY_HIGH);
+
+    /*  Private methods used to pass initial thread events                   */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_MASTER",        master_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_CLIENT",        client_event,    0);
+
+    /*  Private methods used between threads                                 */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_CANCEL",        cancel_event,    0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    <A href="smt78.htm#smtoper_init">smtoper init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_OPERATOR, "")) != NULL)
+        operq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that socket i/o agent is running, else start it up            */
+    <A href="smt80.htm#smtsock_init">smtsock init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_SOCKET, "")) != NULL)
+        sockq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that timer agent is running, else start it up                 */
+    <A href="smt82.htm#smttime_init">smttime init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_TIMER, "")) != NULL)
+        timeq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Ensure that FTP data agent is running, else start it up              */
+    <A href="smt75.htm#smtftpd_init">smtftpd init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_FTPD, "")) != NULL)
+        dataq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Create initial thread to manage master port                          */
+    if ((thread = <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "main")) != NULL)
+      {
+        SEND (&amp;thread-&gt; queue-&gt; qid, "_MASTER", "");
+        ((TCB *) thread-&gt; tcb)-&gt; thread_type = master_event;
+        ((TCB *) thread-&gt; tcb)-&gt; handle      = 0;
+      }
+    else
+        return (-1);
+
+    this_agent = agent;                 /*  Handle to ourselves              */
+
+    ftp_initialise ();
+
+    /*  Get root directory                                                   */
+    rootdir = mem_strdup (p_rootdir);
+
+    /*  Get local host addresses table, which may be NULL                    */
+    hostaddrs = get_hostaddrs ();
+
+    /*  Signal to caller that we initialised okay                            */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt73.htm">&lt;</A>
+ | <A href="smt75.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

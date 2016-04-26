@@ -1,0 +1,131 @@
+<HTML>
+<BODY BACKGROUND="newstone.gif">
+<H1>smtsock.l</H1>
+<HR>
+<PRE>
+!----------------------------------------------------------------------------
+!   Name:       smtsock.l
+!   Title:      Dialog for SMT socket i/o agent
+!   Package:    Libero SMT 2.x
+!
+!   Written:    1996/06/16  iMatix SMT kernel team <A HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+!   Revised:    1997/12/28
+!
+!   Copyright:  Copyright (c) 1991-2000 iMatix Corporation
+!   License:    This is free software; you can redistribute it and/or modify
+!               it under the terms of the SMT License Agreement as provided
+!               in the file LICENSE.TXT.  This software is distributed in
+!               the hope that it will be useful, but without any warranty.
+!----------------------------------------------------------------------------
+-schema=smtschm.c
+
+<A NAME="afterinit">After-Init</A>:
+    (--) Ok                                 -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          +
+    (--) Error                              -&gt;
+          + <A HREF="smtsocks.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="gettingevent">Getting-Event</A>:
+    (--) Read                               -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createreadrequest" TARGET="source">Create-Read-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Readh                              -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createhugereadrequest" TARGET="source">Create-Huge-Read-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Readr                              -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createreadrepeatrequest" TARGET="source">Create-Read-Repeat-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Readrh                             -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createhugereadrepeatrequest" TARGET="source">Create-Huge-Read-Repeat-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Write                              -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createwriterequest" TARGET="source">Create-Write-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Writeh                             -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createhugewriterequest" TARGET="source">Create-Huge-Write-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Input                              -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createinputrequest" TARGET="source">Create-Input-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Inputr                             -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createinputrepeatrequest" TARGET="source">Create-Input-Repeat-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Output                             -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createoutputrequest" TARGET="source">Create-Output-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Connect                            -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#createconnectrequest" TARGET="source">Create-Connect-Request</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Flush                              -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#flushsocketrequests" TARGET="source">Flush-Socket-Requests</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Timeout                            -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Invalid                            -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#getnexteventfromqueue" TARGET="source">Get-Next-Event-From-Queue</A>
+    (--) Empty                              -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#checkforexpiredrequests" TARGET="source">Check-For-Expired-Requests</A>
+          + <A HREF="smtsocks.htm#waitforsocketactivity" TARGET="source">Wait-For-Socket-Activity</A>
+          + <A HREF="smtsocks.htm#checkfirstsocketactivity" TARGET="source">Check-First-Socket-Activity</A>
+    (--) No-Requests                        -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#sendtimeouteventtoself" TARGET="source">Send-Timeout-Event-To-Self</A>
+    (--) No-Activity                        -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#sendtimeouteventtoself" TARGET="source">Send-Timeout-Event-To-Self</A>
+
+<A NAME="socketactivity">Socket-Activity</A>:
+    (--) Read                               -&gt; <A HREF="#afterreading">After-Reading</A>
+          + <A HREF="smtsocks.htm#readdatafromsocket" TARGET="source">Read-Data-From-Socket</A>
+    (--) Write                              -&gt; <A HREF="#afterwriting">After-Writing</A>
+          + <A HREF="smtsocks.htm#writedatatosocket" TARGET="source">Write-Data-To-Socket</A>
+    (--) Input                              -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#signalsocketreadyforinput" TARGET="source">Signal-Socket-Ready-For-Input</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+    (--) Output                             -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#signalsocketreadyforoutput" TARGET="source">Signal-Socket-Ready-For-Output</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+    (--) Error                              -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#signalsocketerror" TARGET="source">Signal-Socket-Error</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+    (--) Finished                           -&gt; <A HREF="#gettingevent">Getting-Event</A>
+          + <A HREF="smtsocks.htm#sendtimeouteventtoself" TARGET="source">Send-Timeout-Event-To-Self</A>
+
+<A NAME="afterreading">After-Reading</A>:
+    (--) Incomplete                         -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+    (--) Finished                           -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#signalreadcomplete" TARGET="source">Signal-Read-Complete</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+    (--) Closed                             -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#signalreadclosed" TARGET="source">Signal-Read-Closed</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+    (--) Error                              -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#signalsocketerror" TARGET="source">Signal-Socket-Error</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+
+<A NAME="afterwriting">After-Writing</A>:
+    (--) Incomplete                         -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+    (--) Finished                           -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#signalwritecomplete" TARGET="source">Signal-Write-Complete</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+    (--) Closed                             -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#signalwriteclosed" TARGET="source">Signal-Write-Closed</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+    (--) Error                              -&gt; <A HREF="#socketactivity">Socket-Activity</A>
+          + <A HREF="smtsocks.htm#signalsocketerror" TARGET="source">Signal-Socket-Error</A>
+          + <A HREF="smtsocks.htm#checknextsocketactivity" TARGET="source">Check-Next-Socket-Activity</A>
+
+<A NAME="defaults">Defaults</A>:
+    (--) Exception                          -&gt;
+          + <A HREF="smtsocks.htm#destroyallrequests" TARGET="source">Destroy-All-Requests</A>
+          + <A HREF="smtsocks.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Shutdown                           -&gt;
+          + <A HREF="smtsocks.htm#destroyallrequests" TARGET="source">Destroy-All-Requests</A>
+          + <A HREF="smtsocks.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) $other                             -&gt;
+          +
+</PRE>
+<HR>
+<P>Generated by <A HREF="http://www.imatix.com">
+Framer 1.0 &#169; 1997 iMatix</A></P>
+</BODY></HTML>

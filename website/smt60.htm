@@ -1,0 +1,52 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>lazy_open_text</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt59.htm">&lt;</A>
+ | <A href="smt61.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="lazy_open_text">&nbsp;</A>
+<H3><A NAME="TOC106"><TT>lazy_open_text</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+lazy_open_text (char *path, int flags)
+</PRE>
+<H4>Synopsis</H4>
+<P>As <A href="smt59.htm#lazy_open">lazy open</A>(), but opens the file in text mode, on those
+   platforms where this makes a difference.
+<H4>Examples</H4>
+<PRE>
+    handle_input  = lazy_open (filename, O_RDONLY);
+    handle_output = lazy_open (filename, O_WRONLY | O_CREAT | O_TRUNC);
+    handle_append = lazy_open (filename, O_WRONLY | O_CREAT | O_APPEND);
+    if (io_completed && handle &lt; 0)
+        have error on file
+</PRE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    int rc;
+
+#if (defined (SMT_TRACE))
+    trace ("lazy_open_text: path=%s", path);
+#endif
+    rc = open (path, flags | O_NONBLOCK, S_IREAD | S_IWRITE);
+    set_io_completed (rc);
+    return (rc);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt59.htm">&lt;</A>
+ | <A href="smt61.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

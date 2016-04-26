@@ -1,0 +1,68 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The Network Delay Simulator</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt83.htm">&lt;</A>
+ | <A href="smt85.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC130">The Network Delay Simulator</A></H2>
+<P>Filename: smtsimu.h
+<BR>Package: Libero SMT 2.x
+<BR>Written: 1996/11/28 iMatix SMT kernel team <A
+   HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+<BR>Revised: 1997/12/15
+<BR>Copyright: Copyright (c) 1991-2000 iMatix Corporation
+<H3>Synopsis</H3>
+<P>Redefines socket functions to pass via smtsimu. Include
+   smtsimu.h after smtlib.h when you want to simulate network
+   delays. You do not need to change your program in any other
+   way.
+<H4>List of Functions</H4>
+<UL>
+<LI>int <A href="smt85.htm#smtsimu_init">smtsimu init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt87.htm#smtsimu_smtsock_init">smtsimu smtsock init</A><BR>
+   (void);
+</LI>
+<LI>void <A href="smt88.htm#smtsimu_smtsock_trace">smtsimu smtsock trace</A><BR>
+   (Bool trace_value);
+</LI>
+<LI>int <A href="smt86.htm#smtsimu_sock_init">smtsimu sock init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt89.htm#smtsimu_write_UDP">smtsimu write UDP</A><BR>
+   (SOCKET handle, void *buffer, size_t length, struct sockaddr_in
+   *sin);
+</LI>
+</UL>
+<H4>List of Symbol Definitions</H4>
+<P>smtsimu.h defines these symbols, possibly conditionally:
+<TABLE BORDER NOWRAP>
+<TR><TH ALIGN="LEFT">Symbol:  </TH>
+    <TH ALIGN="LEFT">Defined as:</TH>
+<TR><TD ALIGN="LEFT"><TT><B>_SMTSIMU_INCLUDED</B>  </TT>
+<TD ALIGN="LEFT">TRUE
+<TR><TD ALIGN="LEFT"><TT><B>smtsock_init</B>  </TT>
+<TD ALIGN="LEFT">smtsimu_smtsock_init
+<TR><TD ALIGN="LEFT"><TT><B>smtsock_trace</B>  </TT>
+<TD ALIGN="LEFT">smtsimu_smtsock_trace
+<TR><TD ALIGN="LEFT"><TT><B>sock_init</B>  </TT>
+<TD ALIGN="LEFT">smtsimu_sock_init
+<TR><TD ALIGN="LEFT"><TT><B>write_UDP</B>  </TT>
+<TD ALIGN="LEFT">smtsimu_write_UDP
+</TABLE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt83.htm">&lt;</A>
+ | <A href="smt85.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

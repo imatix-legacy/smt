@@ -1,0 +1,74 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smttime_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt81.htm">&lt;</A>
+ | <A href="smt83.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smttime_init">&nbsp;</A>
+<H3><A NAME="TOC128"><TT>smttime_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int
+smttime_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT timer agent. Returns 0 if initialised okay,
+   -1 if there was an error. The timer agent provides timing
+   events after a certain delay, at a specific time, or at a
+   specific frequency. When you initialise the timer agent it
+   creates an unnamed thread automatically. Send events to this
+   thread. The timer accuracy is 1/100th of a second, depending on
+   the system capacity and speed. Supports these public methods:
+   <TABLE BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>ALARM</B>  <TD
+   ALIGN="LEFT">Send an alarm after some delay (use
+   SMT_TIME_ALARM). <TR><TD ALIGN="LEFT"><B>WAKEUP</B>  <TD
+   ALIGN="LEFT">Send an alarm at some time (use SMT_TIME_ALARM).
+   <TR><TD ALIGN="LEFT"><B>CLOCK</B>  <TD ALIGN="LEFT">Send an
+   alarm at some frequency (use SMT_TIME_CLOCK). <TR><TD
+   ALIGN="LEFT"><B>FLUSH</B>  <TD ALIGN="LEFT">Cancel all timing
+   events for a client thread. </TABLE> Sends errors to the
+   SMTOPER agent; see doc for reply events.
+<H4>Source Code - (smttime.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+#   include "smttime.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name      Event value     Priority        */
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",       shutdown_event, SMT_PRIORITY_MAX);
+
+    /*  Timer event sent by kernel to the timer agent (this program)         */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIMER",          timer_event,    0);
+
+    /*  Private event, used to loop if no system timers are available        */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "_TIMER",         timer_event,    SMT_PRIORITY_LOW);
+
+    /*  Public methods supported by this agent                               */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "ALARM",          alarm_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "WAKEUP",         wakeup_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "CLOCK",          clock_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "FLUSH",          flush_event,    0);
+
+    /*  Create initial, unnamed thread                                       */
+    <A href="smt49.htm#thread_create">thread create</A> (AGENT_NAME, "");
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt81.htm">&lt;</A>
+ | <A href="smt83.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

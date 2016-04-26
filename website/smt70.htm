@@ -1,0 +1,115 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The Standard SMT Agents</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt69.htm">&lt;</A>
+ | <A href="smt71.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC116">The Standard SMT Agents</A></H2>
+<P>Filename: smtdefn.h
+<BR>Package: Libero SMT 2.x
+<BR>Written: 1996/05/27 iMatix SMT kernel team <A
+   HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+<BR>Revised: 1999/08/27
+<BR>Copyright: Copyright (c) 1991-2000 iMatix Corporation
+<H3>Synopsis</H3>
+<P>Defines the standard agent prototypes and methods.
+<H4>List of Functions</H4>
+<UL>
+<LI>int <A href="smt71.htm#smtauth_init">smtauth init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt72.htm#smtecho_init">smtecho init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt73.htm#smthttp_init">smthttp init</A><BR>
+   (char *rootdir, char *cgidir);
+</LI>
+<LI>int <A href="smt77.htm#smtlog_init">smtlog init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt78.htm#smtoper_init">smtoper init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt79.htm#smtslot_init">smtslot init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt80.htm#smtsock_init">smtsock init</A><BR>
+   (void);
+</LI>
+<LI>void <A href="smt81.htm#smtsock_trace">smtsock trace</A><BR>
+   (Bool trace);
+</LI>
+<LI>int <A href="smt82.htm#smttime_init">smttime init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt83.htm#smttran_init">smttran init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt74.htm#smtftpc_init">smtftpc init</A><BR>
+   (char *root);
+</LI>
+<LI>int <A href="smt75.htm#smtftpd_init">smtftpd init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="smt76.htm#smtrdns_init">smtrdns init</A><BR>
+   (void);
+</LI>
+<LI>int <A href="UNDEF">smtpipe init</A><BR>
+   (char *pipefile);
+</LI>
+</UL>
+<H4>List of Symbol Definitions</H4>
+<P>smtdefn.h defines these symbols, possibly conditionally:
+<TABLE BORDER NOWRAP>
+<TR><TH ALIGN="LEFT">Symbol:  </TH>
+    <TH ALIGN="LEFT">Defined as:</TH>
+<TR><TD ALIGN="LEFT"><TT><B>SMT_ECHO</B>  </TT>
+<TD ALIGN="LEFT">"smtecho" /* Name of TCP/IP echo agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_ECHO_PORT</B>  </TT>
+<TD ALIGN="LEFT">"7" /* Port for echo agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_FTPC</B>  </TT>
+<TD ALIGN="LEFT">"smtftpc" /* Name of FTP server control agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_FTPD</B>  </TT>
+<TD ALIGN="LEFT">"smtftpd" /* Name of FTP server data agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_FTP_PORT</B>  </TT>
+<TD ALIGN="LEFT">"21" /* Port for FTP agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_HTTP</B>  </TT>
+<TD ALIGN="LEFT">"smthttp" /* Name of HTTP server agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_HTTP_PORT</B>  </TT>
+<TD ALIGN="LEFT">"80" /* Port for HTTP agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_LOGGING</B>  </TT>
+<TD ALIGN="LEFT">"smtlog" /* Name of logging agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_OPERATOR</B>  </TT>
+<TD ALIGN="LEFT">"smtoper" /* Name of operator agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_RDNS</B>  </TT>
+<TD ALIGN="LEFT">"smtrdns" /* Name of reverse dns agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_SHTTP_PORT</B>  </TT>
+<TD ALIGN="LEFT">"443" /* Port for SHTTP agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_SLOT</B>  </TT>
+<TD ALIGN="LEFT">"smtslot" /* Name of time slot agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_SOCKET</B>  </TT>
+<TD ALIGN="LEFT">"smtsock" /* Name of socket i/o agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_SSL</B>  </TT>
+<TD ALIGN="LEFT">"smtssl" /* Name of SSL server agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_TIMER</B>  </TT>
+<TD ALIGN="LEFT">"smttime" /* Name of timer agent */
+<TR><TD ALIGN="LEFT"><TT><B>SMT_TRANSFER</B>  </TT>
+<TD ALIGN="LEFT">"smttran" /* Name of transfer agent */
+<TR><TD ALIGN="LEFT"><TT><B>_SMTDEFN_INCLUDED</B>  </TT>
+<TD ALIGN="LEFT">TRUE
+</TABLE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt69.htm">&lt;</A>
+ | <A href="smt71.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

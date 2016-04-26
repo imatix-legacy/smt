@@ -1,0 +1,44 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtsimu_smtsock_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt86.htm">&lt;</A>
+ | <A href="smt88.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtsimu_smtsock_init">&nbsp;</A>
+<H3><A NAME="TOC133"><TT>smtsimu_smtsock_init</TT></A></H3>
+<PRE>
+#include "smtsimu.h"
+int
+smtsimu_smtsock_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Replaces the normal <A href="smt80.htm#smtsock_init">smtsock init</A>() function call. Calls the
+   SMTSOCK agent to initialise, as usual, then initialises the
+   network delay simulation agent. Returns -1 if there was an
+   error, else 0.
+<H4>Source Code - (smtsimu.c)</H4>
+<PRE>
+{
+    /*  Initialise SMTSOCK agent                                             */
+    if (<A href="smt80.htm#smtsock_init">smtsock init</A> ())
+        return (-1);
+
+    /*  Now initialise the SMTSIMU agent                                     */
+    return (<A href="smt85.htm#smtsimu_init">smtsimu init</A> ());
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt86.htm">&lt;</A>
+ | <A href="smt88.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

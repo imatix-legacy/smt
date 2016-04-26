@@ -1,0 +1,307 @@
+<HTML>
+<BODY BACKGROUND="newstone.gif">
+<H1>smtlog.c</H1>
+<HR>
+<PRE>
+/*  ----------------------------------------------------------------&lt;Prolog&gt;-
+    Name:       smtlog.c
+    Title:      SMT logging agent
+    Package:    Libero/SMT Kernel 2.x
+
+    Written:    1996/06/15  iMatix SMT kernel team <A HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+    Revised:    1999/11/26
+
+    Synopsis:   Writes data to log files.
+
+    Copyright:  Copyright (c) 1991-2000 iMatix Corporation
+    License:    This is free software; you can redistribute it and/or modify
+                it under the terms of the SMT License Agreement as provided
+                in the file LICENSE.TXT.  This software is distributed in
+                the hope that it will be useful, but without any warranty.
+ ------------------------------------------------------------------&lt;/Prolog&gt;-*/
+
+#include "smtdefn.h"                    /*  SMT definitions                  */
+
+
+/*- Definitions -------------------------------------------------------------*/
+
+#define AGENT_NAME   SMT_LOGGING        /*  Our public name                  */
+#define LOG_LINEMAX  4096
+
+typedef struct                          /*  Thread context block:            */
+{
+    int  handle;                        /*    Handle for i/o                 */
+    Bool timestamp;                     /*    By default, we timestamp       */
+} TCB;
+
+
+/*- Function prototypes -----------------------------------------------------*/
+
+static char *logfile_name (THREAD *thread);
+static void  open_logfile (THREAD *thread, char mode);
+static char *time_str     (void);
+
+
+/*- Global variables used in this source file only --------------------------*/
+
+static TCB
+    *tcb;                               /*  Address thread context block     */
+static QID
+    console;                            /*  Operator console event queue     */
+
+#include "smtlog.d"                     /*  Include dialog data              */
+
+
+/********************   INITIALISE AGENT - ENTRY POINT    ********************/
+
+/*  ---------------------------------------------------------------------[&lt;]-
+    Function: smtlog_init
+
+    Synopsis: Initialises the SMT logging agent.  Returns 0 if initialised
+    okay, -1 if there was an error.  The logging agent writes data to log
+    files.  Create an unnamed thread for each log file you want to manage,
+    then send events to that thread.  Supports these public methods:
+    &lt;Table&gt;
+    CYCLE       Cycle log file if it already exists.
+    OPEN        Start a new logfile as specified by event body.
+    APPEND      Append to an existing logfile as specified by event body.
+    PUT         Write line to logile, prefixed by date and time.
+    PLAIN       Use plain logfile output (no timestamp).
+    STAMP       Put timestamp at start of each logged line.
+    CLOSE       Close logfile and destroy thread.
+    &lt;/Table&gt;
+    Sends errors to the SMTOPER agent; does not send reply events.
+    ---------------------------------------------------------------------[&gt;]-*/
+
+int
+smtlog_init (void)
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle to console thread         */
+#   include "smtlog.i"                  /*  Include dialog interpreter       */
+
+    /*                      Method name   Event value     Priority           */
+    /*  Shutdown event comes from Kernel                                     */
+    method_declare (agent, "SHUTDOWN",    shutdown_event, SMT_PRIORITY_MAX);
+
+    /*  Public methods supported by this agent                               */
+    method_declare (agent, "CYCLE",       cycle_event,    0);
+    method_declare (agent, "OPEN",        open_event,     0);
+    method_declare (agent, "APPEND",      append_event,   0);
+    method_declare (agent, "PUT",         put_event,      0);
+    method_declare (agent, "PLAIN",       plain_event,    0);
+    method_declare (agent, "STAMP",       stamp_event,    0);
+    method_declare (agent, "CLOSE",       close_event,    0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    smtoper_init ();
+    if ((thread = thread_lookup (SMT_OPERATOR, "")) != NULL)
+        console = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+
+
+/*************************   <A NAME="initialisethethread">INITIALISE THE THREAD</A>   *************************/
+
+MODULE initialise_the_thread (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+    tcb-&gt; handle    = 0;                /*  File is not open                 */
+    tcb-&gt; timestamp = TRUE;             /*  By default, we timestamp         */
+    the_next_event = ok_event;
+}
+
+
+/************************   <A NAME="cyclelogfileifexists">CYCLE LOGFILE IF EXISTS</A>   ************************/
+
+MODULE cycle_logfile_if_exists (THREAD *thread)
+{
+    char
+        *name;
+
+    if ((name = logfile_name (thread)) != NULL)
+        file_cycle (name, CYCLE_ALWAYS);
+}
+
+static char *
+logfile_name (THREAD *thread)
+{
+    char
+        *name;
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+    /*  Event body or thread name supplies name for the log file             */
+    if (thread-&gt; event-&gt; body && strused (thread-&gt; event-&gt; body))
+        name = (char *) thread-&gt; event-&gt; body;
+    else
+        name = thread-&gt; name;
+
+    if (streq (name, "") || streq (name, "NULL"))
+        return (NULL);
+    else
+        return (name);
+}
+
+
+/**************************   <A NAME="openthreadlogfile">OPEN THREAD LOGFILE</A>   **************************/
+
+MODULE open_thread_logfile (THREAD *thread)
+{
+    open_logfile (thread, 'w');
+}
+
+static void
+open_logfile (THREAD *thread, char mode)
+{
+    char
+        *name;
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if ((name = logfile_name (thread)) == NULL)
+        tcb-&gt; handle = 0;
+    else
+      {
+        tcb-&gt; handle = lazy_open_text (name,
+                       mode == 'w'? O_WRONLY | O_CREAT | O_TRUNC:
+                       mode == 'a'? O_WRONLY | O_CREAT | O_APPEND:
+                       /*  else  */ O_WRONLY | O_CREAT);
+        if (io_completed)
+            if (tcb-&gt; handle &lt; 0)       /*  If the open failed, send error   */
+              {                         /*    to console, and terminate      */
+                sendfmt (&console, "ERROR", "Could not open %s", name);
+                senderr (&console);
+                raise_exception (exception_event);
+              }
+      }
+}
+
+
+/*************************   <A NAME="appendthreadlogfile">APPEND THREAD LOGFILE</A>   *************************/
+
+MODULE append_thread_logfile (THREAD *thread)
+{
+    open_logfile (thread, 'a');
+}
+
+
+/************************   <A NAME="logfileoutputisplain">LOG FILE OUTPUT IS PLAIN</A>   ***********************/
+
+MODULE log_file_output_is_plain (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+    tcb-&gt; timestamp = FALSE;            /*  No timestamp in data             */
+}
+
+
+/************************   <A NAME="logfileoutputistimed">LOG FILE OUTPUT IS TIMED</A>   ***********************/
+
+MODULE log_file_output_is_timed (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+    tcb-&gt; timestamp = TRUE;             /*  Add timestamp to data            */
+}
+
+
+/*************************   <A NAME="writetexttologfile">WRITE TEXT TO LOGFILE</A>   *************************/
+
+MODULE write_text_to_logfile (THREAD *thread)
+{
+    static char
+        formatted [LOG_LINEMAX + 1];    /*  Formatted string                 */
+    word
+        size,                           /*  Size of event body               */
+        source;                         /*  Copy text from event body        */
+    int
+        fmtsize;                        /*   into the formatted string       */
+
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; timestamp)
+      {                                 /*  Start with date and time         */
+        strcpy (formatted, time_str ());
+        strcat (formatted, ": ");       /*  Add a colon and a space          */
+        fmtsize = strlen (formatted);   /*    and add event body text        */
+      }
+    else
+        fmtsize = 0;                    /*  No date/time stamp               */
+
+    size = thread-&gt; event-&gt; body_size;
+    if (thread-&gt; event-&gt; body [size - 1] == '\0')
+        size--;
+
+    for (source = 0; source &lt; size; source++)
+      {
+        formatted [fmtsize++] = thread-&gt; event-&gt; body [source];
+        if (fmtsize == LOG_LINEMAX)
+            break;
+      }
+    formatted [fmtsize++] = '\n';       /*  Add a newline                    */
+
+    /*  Write to the log file, but do not try to signal errors - if we       */
+    /*  send a message to the console now, we could create an infinite       */
+    /*  loop... (the console may send it right back to us, see?)             */
+
+    if (tcb-&gt; handle)
+        lazy_write (tcb-&gt; handle, formatted, fmtsize);
+}
+
+
+/*  -------------------------------------------------------------------------
+ *  time_str
+ *
+ *  Returns the current date and time formatted as: "yy/mm/dd hh:mm:ss".
+ *  The formatted time is in a static string that each call overwrites.
+ */
+
+static char *
+time_str (void)
+{
+    static char
+        formatted_time [18];
+    time_t
+        time_secs;
+    struct tm
+        *time_struct;
+
+    time_secs   = time (NULL);
+    time_struct = safe_localtime (&time_secs);
+
+    sprintf (formatted_time, "%2d/%02d/%02d %2d:%02d:%02d",
+                              time_struct-&gt; tm_year % 100,
+                              time_struct-&gt; tm_mon + 1,
+                              time_struct-&gt; tm_mday,
+                              time_struct-&gt; tm_hour,
+                              time_struct-&gt; tm_min,
+                              time_struct-&gt; tm_sec);
+    return (formatted_time);
+}
+
+
+/**************************   <A NAME="closethreadlogfile">CLOSE THREAD LOGFILE</A>   *************************/
+
+MODULE close_thread_logfile (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+
+    if (tcb-&gt; handle)                   /*  Close log file, if opened        */
+        lazy_close (tcb-&gt; handle);
+}
+
+
+/*************************   <A NAME="terminatethethread">TERMINATE THE THREAD</A>   **************************/
+
+MODULE terminate_the_thread (THREAD *thread)
+{
+    tcb = thread-&gt; tcb;                 /*  Point to thread's context        */
+    the_next_event = terminate_event;
+}
+</PRE>
+<HR>
+<P>Generated by <A HREF="http://www.imatix.com">
+Framer 1.0 &#169; 1997 iMatix</A></P>
+</BODY></HTML>

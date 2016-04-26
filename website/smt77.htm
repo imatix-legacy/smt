@@ -1,0 +1,78 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtlog_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt76.htm">&lt;</A>
+ | <A href="smt78.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtlog_init">&nbsp;</A>
+<H3><A NAME="TOC123"><TT>smtlog_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int
+smtlog_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT logging agent. Returns 0 if initialised
+   okay, -1 if there was an error. The logging agent writes data
+   to log files. Create an unnamed thread for each log file you
+   want to manage, then send events to that thread. Supports these
+   public methods: <TABLE BORDER NOWRAP> <TR><TD
+   ALIGN="LEFT"><B>CYCLE</B>  <TD ALIGN="LEFT">Cycle log file if
+   it already exists. <TR><TD ALIGN="LEFT"><B>OPEN</B>  <TD
+   ALIGN="LEFT">Start a new logfile as specified by event body.
+   <TR><TD ALIGN="LEFT"><B>APPEND</B>  <TD ALIGN="LEFT">Append to
+   an existing logfile as specified by event body. <TR><TD
+   ALIGN="LEFT"><B>PUT</B>  <TD ALIGN="LEFT">Write line to logile,
+   prefixed by date and time. <TR><TD ALIGN="LEFT"><B>PLAIN</B>
+   <TD ALIGN="LEFT">Use plain logfile output (no timestamp).
+   <TR><TD ALIGN="LEFT"><B>STAMP</B>  <TD ALIGN="LEFT">Put
+   timestamp at start of each logged line. <TR><TD
+   ALIGN="LEFT"><B>CLOSE</B>  <TD ALIGN="LEFT">Close logfile and
+   destroy thread. </TABLE> Sends errors to the SMTOPER agent;
+   does not send reply events.
+<H4>Source Code - (smtlog.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle to console thread         */
+#   include "smtlog.i"                  /*  Include dialog interpreter       */
+
+    /*                      Method name   Event value     Priority           */
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",    shutdown_event, SMT_PRIORITY_MAX);
+
+    /*  Public methods supported by this agent                               */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "CYCLE",       cycle_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "OPEN",        open_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "APPEND",      append_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "PUT",         put_event,      0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "PLAIN",       plain_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "STAMP",       stamp_event,    0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "CLOSE",       close_event,    0);
+
+    /*  Ensure that operator console is running, else start it up            */
+    <A href="smt78.htm#smtoper_init">smtoper init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_OPERATOR, "")) != NULL)
+        console = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt76.htm">&lt;</A>
+ | <A href="smt78.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

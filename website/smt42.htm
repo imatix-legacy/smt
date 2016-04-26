@@ -1,0 +1,76 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>event_accept</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt41.htm">&lt;</A>
+ | <A href="smt43.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="event_accept">&nbsp;</A>
+<H3><A NAME="TOC88"><TT>event_accept</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+EVENT *
+event_accept (
+    QUEUE *queue,                       /*  Queue to take event from         */
+    EVENT *event                        /*  Event, or null for first         */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Takes an event off an event queue, and sends an 'accept' reply
+   to the original sender, if required. If the specified event is
+   null, takes the first (oldest) event in the queue. Otherwise
+   takes the specified event. Returns the address of the event.
+   You should call <A href="smt47.htm#event_destroy">event destroy</A>() when you have finished
+   processing the event. In case of error, returns NULL and sets
+   smt_errno to one of these values: <TABLE BORDER NOWRAP> <TR><TD
+   ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD ALIGN="LEFT">smt_init()
+   was not called, or failed <TR><TD ALIGN="LEFT"><B>SMT
+   QUEUEISEMPTY</B>  <TD ALIGN="LEFT">The queue was empty </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+#if (defined (SMT_TRACE))
+    trace ("event_accept");
+#endif
+    ASSERT (queue);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (NULL);
+      }
+
+    if ((event = event_locate (queue, event)) == NULL)
+        return (NULL);
+
+    /*  Reply to original sender if necessary                                */
+    if (event-&gt; accept_event)
+        <A href="smt41.htm#event_send">event send</A> (
+            &amp;event-&gt; sender,            /*  Send back to original sender     */
+            NULL,                       /*  No queue for reply               */
+            event-&gt; accept_event,       /*  Name of event to send            */
+            NULL, 0,                    /*  Body is empty, size is 0         */
+            NULL, NULL, NULL,           /*  No response events               */
+            0);                         /*  No timeout                       */
+
+    if (event-&gt; timeout)
+        queue-&gt; timed_events++;         /*  One less timed event, maybe      */
+    queue-&gt; cur_events--;               /*  One less event in queue          */
+
+    node_unlink (event);                /*  Unlink from queue                */
+    return (event);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt41.htm">&lt;</A>
+ | <A href="smt43.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

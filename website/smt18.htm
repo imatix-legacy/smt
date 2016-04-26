@@ -1,0 +1,57 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>System-Specific Concerns</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt17.htm">&lt;</A>
+ | <A href="smt19.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<H2><A NAME="TOC63">System-Specific Concerns</A></H2>
+
+<P>This section notes constraints that we've come across on
+various systems.  This is not meant to be a complete list of all
+possible problems.
+
+<H3><A NAME="TOC64">Windows</A></H3>
+
+<H4>SMTSOCK and the select() call</H4>
+
+<P>SMTSOCK uses the select() call to wait for socket events.  On
+UNIX systems, select() returns when the process receives a signal.
+We use this fact to implement the process timer, SMTTIME, in an
+application that may also be doing socket i/o.
+
+<P>Under Windows 95, however, the select() call does not unblock
+when a signal is sent.  The winsock call WSACancelBlockingCall()
+is meant to unblock the select() call.  This does not work under
+Windows 95, at least.  (WSAIsBlocking() always reports FALSE.)
+
+<P>The consequence of this is that the timeout specified in the
+select() call makes a difference to the way that the timer work.
+If we use a 1-second timeout, for instance, we find that timer
+events are also limited to a resolution of 1 second.  This makes
+it difficult to use timer events for real-time work in socket
+based applications.
+
+<P>This appears to be a bug in the Windows 95 winsock.dll; it
+may also affect Windows NT.
+
+<P>Our solution is to use WSACancelBlockingCall() in any case,
+should the winsock.dll support it correctly.  Secondly, under
+Windows, we reduce the select() timeout from 1 second to 1/5th
+of a second.  On other systems - UNIX, OS/2 - we use 1 second,
+so that the application uses minimal system resources.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt17.htm">&lt;</A>
+ | <A href="smt19.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

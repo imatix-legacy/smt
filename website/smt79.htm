@@ -1,0 +1,84 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtslot_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt78.htm">&lt;</A>
+ | <A href="smt80.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtslot_init">&nbsp;</A>
+<H3><A NAME="TOC125"><TT>smtslot_init</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+int
+smtslot_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT time slot agent. Returns 0 if initialised
+   okay, -1 if there was an error. The time slot agent manages
+   time slots. You create a named thread, then send SPECIFY events
+   to define the various time slots for your application. Then you
+   send an ON or OFF event to initialise the timer. The time slot
+   agent then sends SWITCH_ON and SWITCH_OFF events as required. A
+   slot specification is a string, in the format: "name value
+   ...". The name field is a day name ("mon"-"sun"), a date in MD
+   order ("12/31") or a date in YMD order ("95/12/31"). The value
+   is a list of times in 24 hour HH:MM[-HH:MM] format ("7:30-12:30
+   13:30-17:30 17:35"). A value "off" clears all time slots for
+   that day. The time slot accuracy is SLOT_TICK csecs. Any day
+   that does not have specified values is switched 'off'. Supports
+   these public methods: <TABLE BORDER NOWRAP> <TR><TD
+   ALIGN="LEFT"><B>SPECIFY</B>  <TD ALIGN="LEFT">Define a time
+   slot specification. <TR><TD ALIGN="LEFT"><B>RESET</B>  <TD
+   ALIGN="LEFT">Reset all time slots. <TR><TD
+   ALIGN="LEFT"><B>ON</B>  <TD ALIGN="LEFT">Initialise timer -
+   application is switched on. <TR><TD ALIGN="LEFT"><B>OFF</B>
+   <TD ALIGN="LEFT">Initialise timer - application is switched
+   off. <TR><TD ALIGN="LEFT"><B>FINISH</B>  <TD ALIGN="LEFT">End
+   time slot thread. </TABLE> Sends errors to the SMTOPER agent;
+   see doc for reply events.
+<H4>Source Code - (smtslot.c)</H4>
+<PRE>
+{
+    AGENT   *agent;                     /*  Handle for our agent             */
+    THREAD  *thread;                    /*  Handle to console thread         */
+#   include "smtslot.i"                 /*  Include dialog interpreter       */
+
+    /*                      Method name   Event value      Priority          */
+    /*  Shutdown event comes from Kernel                                     */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SHUTDOWN",    shutdown_event,  SMT_PRIORITY_MAX);
+
+    /*  Alarm event sent by timer to this agent                              */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "TIME_ALARM",  tick_event,      0);
+
+    /*  Public methods supported by this agent                               */
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "SPECIFY",     specify_event,   0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "RESET",       reset_event,     0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "ON",          on_event,        0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "OFF",         off_event,       0);
+    <A href="smt33.htm#method_declare">method declare</A> (agent, "FINISH",      finish_event,    0);
+
+    /*  Ensure that timer agent is running, else start it up                 */
+    <A href="smt82.htm#smttime_init">smttime init</A> ();
+    if ((thread = <A href="smt50.htm#thread_lookup">thread lookup</A> (SMT_TIMER, "")) != NULL)
+        timeq = thread-&gt; queue-&gt; qid;
+    else
+        return (-1);
+
+    /*  Signal okay to caller that we initialised okay                       */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt78.htm">&lt;</A>
+ | <A href="smt80.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

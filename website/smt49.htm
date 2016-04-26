@@ -1,0 +1,171 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>thread_create</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt48.htm">&lt;</A>
+ | <A href="smt50.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="thread_create">&nbsp;</A>
+<H3><A NAME="TOC95"><TT>thread_create</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+THREAD *
+thread_create (
+    const char *agent_name,             /*  Name of agent                    */
+    const char *thread_name             /*  Create thread with this name     */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Creates a new thread, and possibly an event queue for the
+   thread. The caller specifies the agent and thread name. The
+   agent must already be declared using <A href="smt30.htm#agent_declare">agent declare</A>(). If
+   the agent was defined as a router, you can create multiple
+   threads with the same name. These threads then share the same
+   event queue on an anonymous basis. If the agent was not defined
+   as a router, it is illegal to create multiple threads with the
+   same name unless the name is empty (meaning "" or NULL). The
+   function automatically creates an event queue for the thread
+   when required. Returns a pointer to the created THREAD block,
+   or null if there was an error. In that case, sets smt_errno to
+   one of: <TABLE BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT
+   NOTREADY</B>  <TD ALIGN="LEFT">smt_init() was not called, or
+   failed <TR><TD ALIGN="LEFT"><B>SMT OUTOFMEMORY</B>  <TD
+   ALIGN="LEFT">Not enough heap memory left <TR><TD
+   ALIGN="LEFT"><B>SMT NOSUCHAGENT</B>  <TD ALIGN="LEFT">The agent
+   was not declared <TR><TD ALIGN="LEFT"><B>SMT AGENTNOTREADY</B>
+   <TD ALIGN="LEFT">The agent is not initialised <TR><TD
+   ALIGN="LEFT"><B>SMT TOOMANYTHREADS</B>  <TD ALIGN="LEFT">Tried
+   to exceed the maximum permitted threads <TR><TD
+   ALIGN="LEFT"><B>SMT THREADEXISTS</B>  <TD ALIGN="LEFT">The
+   thread already exists </TABLE> Attaches the thread to the
+   active thread list.
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    SYMBOL  *dict_entry;                /*  Dictionary symbol                */
+    AGENT   *agent;                     /*  Agent information block          */
+    QUEUE   *queue;                     /*  Queue information block          */
+    THREAD  *thread;                    /*  Created thread block             */
+    char    *full_name;                 /*  Full thread name                 */
+
+#if (defined (SMT_TRACE))
+    trace ("thread_create: agent=%s thread=%s", agent_name, thread_name);
+#endif
+    ASSERT (agent_name);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (NULL);
+      }
+
+    /*  Find agent, quit if there was an error                               */
+    if ((agent = <A href="smt31.htm#agent_lookup">agent lookup</A> (agent_name)) == NULL)
+        return (NULL);
+
+    /*  Check that we're allowed to create a new thread                      */
+    if (agent-&gt; max_threads &gt; 0
+    &amp;&amp;  agent-&gt; max_threads == agent-&gt; cur_threads)
+      {
+        smt_errno = SMT_TOOMANYTHREADS;
+        return (NULL);
+      }
+
+    /*  Simple check that agent has been initialised                         */
+    if (agent-&gt; initialise == NULL)
+      {
+        smt_errno = SMT_AGENTNOTREADY;
+        return (NULL);
+      }
+
+    /*  Treat a NULL thread name as an empty string                          */
+    if (thread_name == NULL)
+        thread_name = "";
+
+    /*  Check if the thread already exists                                   */
+    full_name  = get_entity_name (agent_name, thread_name);
+    dict_entry = sym_lookup_symbol (dict, full_name);
+    queue      = NULL;                  /*  No queue created yet             */
+    if (dict_entry)
+      {
+        /*  If it's a router, we'll use the same queue                       */
+        if (agent-&gt; router)
+            queue = ((THREAD *) (dict_entry-&gt; data))-&gt; queue;
+        else
+        if (thread_name [0])            /*  Otherwise it's an error if the   */
+          {                             /*    thread was given a name        */
+            smt_errno = SMT_THREADEXISTS;
+            return (NULL);
+          }
+      }
+    if (!queue)                        /*   Create new queue in agent        */
+        queue = <A href="smt36.htm#queue_create">queue create</A> (agent, 0);
+
+    /*  Now create entry for the thread                                      */
+    dict_entry = sym_create_symbol (dict, full_name, NULL);
+    if (dict_entry == NULL)
+      {
+        if (queue)                      /*  Clean-up nicely                  */
+            <A href="smt38.htm#queue_destroy">queue destroy</A> (queue);
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Allocate a THREAD block and attach it to the queue's thread list     */
+    /*  We also allocate the TCB and subdialog stack if that is required     */
+    thread = (THREAD *) node_create (&amp;queue-&gt; threads, sizeof (THREAD));
+    if (thread)
+      {
+        thread-&gt; tcb      = agent-&gt; tcb_size &gt; 0?
+                            mem_alloc (agent-&gt; tcb_size):
+                            NULL;
+        thread-&gt; LR_stack = agent-&gt; stack_size &gt; 0?
+                            mem_alloc (agent-&gt; stack_size * sizeof (event_t)):
+                            NULL;
+      }
+    if (thread == NULL)
+      {
+        sym_delete_symbol (dict, dict_entry);
+        if (queue)                      /*  Clean-up nicely                  */
+            <A href="smt38.htm#queue_destroy">queue destroy</A> (queue);
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Point the dictionary entry to the thread information block            */
+    dict_entry-&gt; data = thread;
+
+    /*  Now initialise the thread fields and list heads                       */
+    thread-&gt; symbol     = dict_entry;
+    thread-&gt; name       = mem_strdup (thread_name);
+    thread-&gt; queue      = queue;
+    thread-&gt; thread_id  = agent-&gt; thread_tally++;
+    thread-&gt; animate    = agent-&gt; animate;
+    thread-&gt; left       = thread;
+    thread-&gt; right      = thread;
+    thread-&gt; event      = NULL;         /*  Last event for thread            */
+
+    cur_threads++;                      /*  Keep count of threads            */
+    agent-&gt; cur_threads++;
+    if (agent-&gt; top_threads &lt; agent-&gt; cur_threads)
+        agent-&gt; top_threads = agent-&gt; cur_threads;
+
+    activate_thread (thread);           /*  Move thread to active list       */
+    thread-&gt; state    = SMT_THREAD_ACTIVE;
+    thread-&gt; LR_state = SMT_NULL_STATE;
+    return (thread);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt48.htm">&lt;</A>
+ | <A href="smt50.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

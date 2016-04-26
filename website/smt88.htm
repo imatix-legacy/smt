@@ -1,0 +1,40 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtsimu_smtsock_trace</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt87.htm">&lt;</A>
+ | <A href="smt89.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtsimu_smtsock_trace">&nbsp;</A>
+<H3><A NAME="TOC134"><TT>smtsimu_smtsock_trace</TT></A></H3>
+<PRE>
+#include "smtsimu.h"
+void
+smtsimu_smtsock_trace (Bool trace_value)
+</PRE>
+<H4>Synopsis</H4>
+<P>Replaces the normal <A href="smt81.htm#smtsock_trace">smtsock trace</A>() function call. Calls
+   the SMTSOCK agent to enable/disable tracing, then uses the same
+   trace flag for the delay simulation. Tracing is sent to the
+   operator console.
+<H4>Source Code - (smtsimu.c)</H4>
+<PRE>
+{
+    trace_flag = trace_value;
+    <A href="smt81.htm#smtsock_trace">smtsock trace</A> (trace_value);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt87.htm">&lt;</A>
+ | <A href="smt89.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

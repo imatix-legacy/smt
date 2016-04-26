@@ -1,0 +1,66 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>sendfmt</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt64.htm">&lt;</A>
+ | <A href="smt66.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="sendfmt">&nbsp;</A>
+<H3><A NAME="TOC111"><TT>sendfmt</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+sendfmt (const QID *to_queue, char *name, char *format, ...)
+</PRE>
+<H4>Synopsis</H4>
+<P>Sends a text message to the specified queue. The caller can
+   specify a printf()-type format string and insertion values.
+   Return values are the same as for <A href="smt41.htm#event_send">event send</A>().
+<H4>Examples</H4>
+<PRE>
+    sendfmt (&console, "INFO", "Error accessing %s file", filename);
+</PRE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    static char
+        formatted [4096];               /*  Formatted string                 */
+    va_list
+        argptr;                         /*  Argument list pointer            */
+
+#if (defined (SMT_TRACE))
+    trace ("sendfmt: name=%s format=%s", name, format);
+#endif
+
+    va_start (argptr, format);          /*  Start variable args processing   */
+#if (defined (DOES_SNPRINTF))
+    vsnprintf (formatted, 4096, format, argptr);
+#else
+    vsprintf  (formatted, format, argptr);
+#endif
+    va_end (argptr);                    /*  End variable args processing     */
+
+    return (<A href="smt41.htm#event_send">event send</A> (
+        to_queue,                       /*  Send to specified queue          */
+        NULL,                           /*  No queue for reply               */
+        name,                           /*  Name of event to send            */
+        (byte *) formatted,             /*  Event body to send               */
+        strlen (formatted) + 1,         /*  Event body size, including null  */
+        NULL, NULL, NULL,               /*  No response events               */
+        0));                            /*  No timeout                       */
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt64.htm">&lt;</A>
+ | <A href="smt66.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,68 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>event_iterate</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt45.htm">&lt;</A>
+ | <A href="smt47.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="event_iterate">&nbsp;</A>
+<H3><A NAME="TOC92"><TT>event_iterate</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+EVENT *
+event_iterate (
+    QUEUE *queue,                       /*  Queue to search                  */
+    EVENT *event                        /*  Event, or null for first         */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Returns the first or next event in the queue. If the 'after'
+   argument is null, returns the first event, else returns the
+   next event. You should not 'walk' the event queue directly,
+   since the implementation may change arbitrarily. Returns a
+   pointer to the next event, or null if no (further) events were
+   found. May set smt_errno to one of: <TABLE BORDER NOWRAP>
+   <TR><TD ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD
+   ALIGN="LEFT">smt_init() was not called, or failed <TR><TD
+   ALIGN="LEFT"><B>SMT QUEUEISEMPTY</B>  <TD ALIGN="LEFT">The
+   queue was empty </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+#if (defined (SMT_TRACE))
+    trace ("event_iterate");
+#endif
+    ASSERT (queue);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (NULL);
+      }
+
+    /*  If no event specified, get first event in queue                      */
+    if (event == NULL)
+        event = (EVENT *) &amp;queue-&gt; events;
+
+    event = event-&gt; next;               /*  Get next event in queue          */
+    if (event == (EVENT *) &amp;queue-&gt; events)
+      {
+        smt_errno = SMT_QUEUEISEMPTY;
+        return (NULL);
+      }
+    return (event);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt45.htm">&lt;</A>
+ | <A href="smt47.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,39 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The TCP ECHO Agent - SMTECHO</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt11.htm">&lt;</A>
+ | <A href="smt13.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="SMTECHO">&nbsp;</A>
+<H3><A NAME="TOC49">The TCP ECHO Agent - SMTECHO</A></H3>
+
+<P>Provides the TCP echo service on port 7.
+
+<P>To use SMTECHO, call <A href="smt72.htm#smtecho_init">smtecho init</A>().  This initialises the
+echo service on TCP port 7.  If you set the global variable
+ip_portbase to some value before initialising SMTECHO, the echo
+port is moved by that value.  For instance, if you set ip_portbase
+to 8000, the echo port is 8007.  This lets you run the service in
+'user space': on most systems you need root access to use ports
+below 1000.
+
+<H4>SMTECHO Implementation</H4>
+
+<P>The <A HREF="smtecho.htm">hypertext view</A> of SMTECHO's dialog
+and source code may help to understand how SMTECHO works.
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt11.htm">&lt;</A>
+ | <A href="smt13.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

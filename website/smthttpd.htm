@@ -1,0 +1,465 @@
+<HTML>
+<BODY BACKGROUND="newstone.gif">
+<H1>smthttp.l</H1>
+<HR>
+<PRE>
+!----------------------------------------------------------------------------
+!   Name:       smthttp.l
+!   Title:      Dialog for SMT HTTP server
+!   Package:    Libero SMT 2.x
+!
+!   Written:    1996/04/22  iMatix SMT kernel team <A HREF=mailto:"smt@imatix.com">smt@imatix.com</A>
+!   Revised:    2000/02/18
+!
+!   Copyright:  Copyright (c) 1991-2000 iMatix Corporation
+!   License:    This is free software; you can redistribute it and/or modify
+!               it under the terms of the SMT License Agreement as provided
+!               in the file LICENSE.TXT.  This software is distributed in
+!               the hope that it will be useful, but without any warranty.
+!----------------------------------------------------------------------------
+-schema=smtschm.c
+
+<A NAME="afterinit">After-Init</A>:
+    (--) Master                             -&gt; <A HREF="#masterinput">Master-Input</A>
+          + <A HREF="smthttps.htm#openserverlogfile" TARGET="source">Open-Server-Log-File</A>
+          + <A HREF="smthttps.htm#loadvirtualhosts" TARGET="source">Load-Virtual-Hosts</A>
+          + <A HREF="smthttps.htm#checkrootdirexists" TARGET="source">Check-Rootdir-Exists</A>
+          + <A HREF="smthttps.htm#opensslsocketifneeded" TARGET="source">Open-Ssl-Socket-If-Needed</A>
+          + <A HREF="smthttps.htm#openmastersocket" TARGET="source">Open-Master-Socket</A>
+          + <A HREF="smthttps.htm#setserverprocessstate" TARGET="source">Set-Server-Process-State</A>
+          + <A HREF="smthttps.htm#waitforsocketinput" TARGET="source">Wait-For-Socket-Input</A>
+    (--) Sock-Retry                         -&gt; <A HREF="#masterinput">Master-Input</A>
+          + <A HREF="smthttps.htm#openmastersocket" TARGET="source">Open-Master-Socket</A>
+          + <A HREF="smthttps.htm#setserverprocessstate" TARGET="source">Set-Server-Process-State</A>
+          + <A HREF="smthttps.htm#waitforsocketinput" TARGET="source">Wait-For-Socket-Input</A>
+    (--) Client                             -&gt; <A HREF="#clientinput">Client-Input</A>
+          + <A HREF="smthttps.htm#prepareclientthread" TARGET="source">Prepare-Client-Thread</A>
+          + <A HREF="smthttps.htm#preparetoreadrequest" TARGET="source">Prepare-To-Read-Request</A>
+          + <A HREF="smthttps.htm#readinputfromsocket" TARGET="source">Read-Input-From-Socket</A>
+
+<A NAME="masterinput">Master-Input</A>:
+    (--) Ok                                 -&gt;
+          + <A HREF="smthttps.htm#acceptclientconnection" TARGET="source">Accept-Client-Connection</A>
+          + <A HREF="smthttps.htm#waitforsocketinput" TARGET="source">Wait-For-Socket-Input</A>
+    (--) New-Ssl-Client                     -&gt;
+          + <A HREF="smthttps.htm#createsslchildthread" TARGET="source">Create-Ssl-Child-Thread</A>
+    (--) Timer                              -&gt;
+          + <A HREF="smthttps.htm#reloadconfigifneeded" TARGET="source">Reload-Config-If-Needed</A>
+    (--) Restart                            -&gt; <A HREF="#masterrestart">Master-Restart</A>
+          + <A HREF="smthttps.htm#freeallserverresources" TARGET="source">Free-All-Server-Resources</A>
+          + <A HREF="smthttps.htm#killallactiveconnections" TARGET="source">Kill-All-Active-Connections</A>
+          + <A HREF="smthttps.htm#preparetoclosemastersocket" TARGET="source">Prepare-To-Close-Master-Socket</A>
+          + <A HREF="smthttps.htm#waitforconnectionstoclose" TARGET="source">Wait-For-Connections-To-Close</A>
+    (--) Sock-Retry                         -&gt;
+          + <A HREF="smthttps.htm#openmastersocket" TARGET="source">Open-Master-Socket</A>
+          + <A HREF="smthttps.htm#waitforsocketinput" TARGET="source">Wait-For-Socket-Input</A>
+    (--) Sock-Closed                        -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smthttps.htm#signalsocketclosed" TARGET="source">Signal-Socket-Closed</A>
+          + <A HREF="smthttps.htm#checksockettype" TARGET="source">Check-Socket-Type</A>
+    (--) Cancel                             -&gt;
+          +
+    (--) Ssl-Open                           -&gt;
+          + <A HREF="smthttps.htm#getsslmasterport" TARGET="source">Get-Ssl-Master-Port</A>
+    (--) Wsx-Install                        -&gt;
+          + <A HREF="smthttps.htm#installwsxalias" TARGET="source">Install-Wsx-Alias</A>
+    (--) Wsx-Cancel                         -&gt;
+          + <A HREF="smthttps.htm#cancelwsxalias" TARGET="source">Cancel-Wsx-Alias</A>
+
+<A NAME="masterrestart">Master-Restart</A>: &lt;<A NAME="masterinput"><Master-Input></A>&gt;
+    (--) Timer                              -&gt; <A HREF="#masterinput">Master-Input</A>
+          + <A HREF="smthttps.htm#closemastersocket" TARGET="source">Close-Master-Socket</A>
+          + <A HREF="smthttps.htm#reloadconfigifchanged" TARGET="source">Reload-Config-If-Changed</A>
+          + <A HREF="smthttps.htm#openserverlogfile" TARGET="source">Open-Server-Log-File</A>
+          + <A HREF="smthttps.htm#loadvirtualhosts" TARGET="source">Load-Virtual-Hosts</A>
+          + <A HREF="smthttps.htm#checkrootdirexists" TARGET="source">Check-Rootdir-Exists</A>
+          + <A HREF="smthttps.htm#restartftpserverifreqd" TARGET="source">Restart-Ftp-Server-If-Reqd</A>
+          + <A HREF="smthttps.htm#restartsslagentifreqd" TARGET="source">Restart-Ssl-Agent-If-Reqd</A>
+          + <A HREF="smthttps.htm#opensslsocketifneeded" TARGET="source">Open-Ssl-Socket-If-Needed</A>
+          + <A HREF="smthttps.htm#openmastersocket" TARGET="source">Open-Master-Socket</A>
+          + <A HREF="smthttps.htm#waitforsocketinput" TARGET="source">Wait-For-Socket-Input</A>
+!   We reject any connection requests that come in now
+    (--) Ok                                 -&gt;
+          + <A HREF="smthttps.htm#rejectclientconnection" TARGET="source">Reject-Client-Connection</A>
+          + <A HREF="smthttps.htm#waitforsocketinput" TARGET="source">Wait-For-Socket-Input</A>
+!   Superstate defines error-handling for client threads.
+!   This makes error handling a little faster in all child
+!   threads; in any case the Defaults handling is secure too.
+
+<A NAME="client">Client</A>:
+    (--) Sock-Error                         -&gt;
+          + <A HREF="smthttps.htm#signalsocketerror" TARGET="source">Signal-Socket-Error</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Sock-Closed                        -&gt;
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Sock-Timeout                       -&gt;
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Sock-Retry                         -&gt;
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Error                              -&gt;
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Ssl-Error                          -&gt;
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Bad-Request                        -&gt;
+          + <A HREF="smthttps.htm#signalbadrequest" TARGET="source">Signal-Bad-Request</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Unauthorized                       -&gt;
+          + <A HREF="smthttps.htm#signalurlunauthorized" TARGET="source">Signal-Url-Unauthorized</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Forbidden                          -&gt;
+          + <A HREF="smthttps.htm#signalurlforbidden" TARGET="source">Signal-Url-Forbidden</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Not-Found                          -&gt;
+          + <A HREF="smthttps.htm#signalurlnotfound" TARGET="source">Signal-Url-Not-Found</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Too-Large                          -&gt;
+          + <A HREF="smthttps.htm#signaltoolarge" TARGET="source">Signal-Too-Large</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Internal-Error                     -&gt;
+          + <A HREF="smthttps.htm#signalinternalerror" TARGET="source">Signal-Internal-Error</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Not-Implemented                    -&gt;
+          + <A HREF="smthttps.htm#signalnotimplemented" TARGET="source">Signal-Not-Implemented</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Overloaded                         -&gt;
+          + <A HREF="smthttps.htm#signaloverloaded" TARGET="source">Signal-Overloaded</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="clientinput">Client-Input</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#haveclientrequest">Have-Client-Request</A>
+          + <A HREF="smthttps.htm#readhttprequestnext" TARGET="source">Read-Http-Request-Next</A>
+          + <A HREF="smthttps.htm#checkifrequestcomplete" TARGET="source">Check-If-Request-Complete</A>
+    (--) Sock-Retry                         -&gt; <A HREF="#clientinput">Client-Input</A>
+          + <A HREF="smthttps.htm#readinputfromsocket" TARGET="source">Read-Input-From-Socket</A>
+
+<A NAME="haveclientrequest">Have-Client-Request</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) More                               -&gt; <A HREF="#clientinput">Client-Input</A>
+          + <A HREF="smthttps.htm#readinputfromsocket" TARGET="source">Read-Input-From-Socket</A>
+    (--) Post                               -&gt; <A HREF="#haveclientpost">Have-Client-Post</A>
+          + <A HREF="smthttps.htm#checkifpostdatacomplete" TARGET="source">Check-If-Post-Data-Complete</A>
+    (--) Finished                           -&gt; <A HREF="#executehttprequest">Execute-Http-Request</A>
+          + <A HREF="smthttps.htm#parsehttprequest" TARGET="source">Parse-Http-Request</A>
+          + <A HREF="smthttps.htm#resolvevirtualhostname" TARGET="source">Resolve-Virtual-Hostname</A>
+          + <A HREF="smthttps.htm#checkclientipallowed" TARGET="source">Check-Client-Ip-Allowed</A>
+
+<A NAME="clientinputpost">Client-Input-Post</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#haveclientpost">Have-Client-Post</A>
+          + <A HREF="smthttps.htm#readhttpposteddata" TARGET="source">Read-Http-Posted-Data</A>
+          + <A HREF="smthttps.htm#checkifpostdatacomplete" TARGET="source">Check-If-Post-Data-Complete</A>
+    (--) Sock-Retry                         -&gt; <A HREF="#clientinputpost">Client-Input-Post</A>
+          + <A HREF="smthttps.htm#readinputfromsocket" TARGET="source">Read-Input-From-Socket</A>
+
+<A NAME="haveclientpost">Have-Client-Post</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) More                               -&gt; <A HREF="#clientinputpost">Client-Input-Post</A>
+          + <A HREF="smthttps.htm#readinputfromsocket" TARGET="source">Read-Input-From-Socket</A>
+    (--) Finished                           -&gt; <A HREF="#executehttprequest">Execute-Http-Request</A>
+          + <A HREF="smthttps.htm#parsehttprequest" TARGET="source">Parse-Http-Request</A>
+          + <A HREF="smthttps.htm#resolvevirtualhostname" TARGET="source">Resolve-Virtual-Hostname</A>
+          + <A HREF="smthttps.htm#checkclientipallowed" TARGET="source">Check-Client-Ip-Allowed</A>
+
+<A NAME="executehttprequest">Execute-Http-Request</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Get-Request                        -&gt; <A HREF="#processhttpget">Process-Http-Get</A>
+          + <A HREF="smthttps.htm#geturltype" TARGET="source">Get-Url-Type</A>
+    (--) Post-Request                       -&gt; <A HREF="#processhttppost">Process-Http-Post</A>
+          + <A HREF="smthttps.htm#geturltype" TARGET="source">Get-Url-Type</A>
+    (--) Update-Request                     -&gt; <A HREF="#processhttpupdate">Process-Http-Update</A>
+          + <A HREF="smthttps.htm#geturltype" TARGET="source">Get-Url-Type</A>
+
+<A NAME="processhttpget">Process-Http-Get</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Html                               -&gt; <A HREF="#havetypeofget">Have-Type-Of-Get</A>
+          + <A HREF="smthttps.htm#checkfileordirectory" TARGET="source">Check-File-Or-Directory</A>
+    (--) Cgi                                -&gt; <A HREF="#havetypeofcgi">Have-Type-Of-Cgi</A>
+          + <A HREF="smthttps.htm#checkfileordirectory" TARGET="source">Check-File-Or-Directory</A>
+    (--) Filter                             -&gt; <A HREF="#havetypeoffilter">Have-Type-Of-Filter</A>
+          + <A HREF="smthttps.htm#checkfileordirectory" TARGET="source">Check-File-Or-Directory</A>
+    (--) Wsx                                -&gt; <A HREF="#tryingtogetwsx">Trying-To-Get-Wsx</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+
+<A NAME="havetypeofget">Have-Type-Of-Get</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) File                               -&gt; <A HREF="#tryingtogetfile">Trying-To-Get-File</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+    (--) Executable                         -&gt; <A HREF="#tryingtogetfile">Trying-To-Get-File</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+    (--) Directory                          -&gt; <A HREF="#tryingtogetdir">Trying-To-Get-Dir</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+
+<A NAME="tryingtogetfile">Trying-To-Get-File</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#getrangeheader">Get-Range-Header</A>
+          + <A HREF="smthttps.htm#checkforconditionalget" TARGET="source">Check-For-Conditional-Get</A>
+          + <A HREF="smthttps.htm#lookforrangeheader" TARGET="source">Look-For-Range-Header</A>
+!   Exceptions produced by If-Modified and If-Not-Modified headers
+    (--) Not-Modified                       -&gt; <A HREF="#requestfinished">Request-Finished</A>
+          + <A HREF="smthttps.htm#signalnotmodified" TARGET="source">Signal-Not-Modified</A>
+          + <A HREF="smthttps.htm#checkifkeepalive" TARGET="source">Check-If-Keep-Alive</A>
+    (--) Precondition                       -&gt; <A HREF="#requestfinished">Request-Finished</A>
+          + <A HREF="smthttps.htm#signalprecondition" TARGET="source">Signal-Precondition</A>
+          + <A HREF="smthttps.htm#checkifkeepalive" TARGET="source">Check-If-Keep-Alive</A>
+
+<A NAME="getrangeheader">Get-Range-Header</A>:
+    (--) Ok                                 -&gt; <A HREF="#getrangeifheader">Get-Range-If-Header</A>
+          + <A HREF="smthttps.htm#lookforrangeifheader" TARGET="source">Look-For-Range-If-Header</A>
+    (--) Not-Found                          -&gt; <A HREF="#aftersendingfile">After-Sending-File</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#sendfiletobrowser" TARGET="source">Send-File-To-Browser</A>
+
+<A NAME="getrangeifheader">Get-Range-If-Header</A>:
+    (--) Ok                                 -&gt; <A HREF="#haverangetosend">Have-Range-To-Send</A>
+          + <A HREF="smthttps.htm#signalpartialcontent" TARGET="source">Signal-Partial-Content</A>
+          + <A HREF="smthttps.htm#getnextrangespecifier" TARGET="source">Get-Next-Range-Specifier</A>
+    (--) Modified                           -&gt; <A HREF="#aftersendingfile">After-Sending-File</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#sendfiletobrowser" TARGET="source">Send-File-To-Browser</A>
+
+<A NAME="haverangetosend">Have-Range-To-Send</A>:
+    (--) More                               -&gt; <A HREF="#aftersendingrange">After-Sending-Range</A>
+          + <A HREF="smthttps.htm#writehttprangeheader" TARGET="source">Write-Http-Range-Header</A>
+          + <A HREF="smthttps.htm#writehttprangebody" TARGET="source">Write-Http-Range-Body</A>
+    (--) Finished                           -&gt; <A HREF="#requestfinished">Request-Finished</A>
+          + <A HREF="smthttps.htm#checkifkeepalive" TARGET="source">Check-If-Keep-Alive</A>
+
+          +
+
+<A NAME="aftersendingrange">After-Sending-Range</A>:
+    (--) Finished                           -&gt; <A HREF="#haverangetosend">Have-Range-To-Send</A>
+          + <A HREF="smthttps.htm#writehttprangefooter" TARGET="source">Write-Http-Range-Footer</A>
+          + <A HREF="smthttps.htm#getnextrangespecifier" TARGET="source">Get-Next-Range-Specifier</A>
+
+          +
+
+<A NAME="processhttppost">Process-Http-Post</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Html                               -&gt;
+          + <A HREF="smthttps.htm#signalbadrequest" TARGET="source">Signal-Bad-Request</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Cgi                                -&gt; <A HREF="#havetypeofcgi">Have-Type-Of-Cgi</A>
+          + <A HREF="smthttps.htm#checkfileordirectory" TARGET="source">Check-File-Or-Directory</A>
+    (--) Filter                             -&gt; <A HREF="#havetypeoffilter">Have-Type-Of-Filter</A>
+          + <A HREF="smthttps.htm#checkfileordirectory" TARGET="source">Check-File-Or-Directory</A>
+    (--) Wsx                                -&gt; <A HREF="#tryingtogetwsx">Trying-To-Get-Wsx</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+
+<A NAME="processhttpupdate">Process-Http-Update</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Html                               -&gt; <A HREF="#havetypeofupdate">Have-Type-Of-Update</A>
+          + <A HREF="smthttps.htm#checkfileordirectory" TARGET="source">Check-File-Or-Directory</A>
+    (--) Cgi                                -&gt;
+          + <A HREF="smthttps.htm#signalbadrequest" TARGET="source">Signal-Bad-Request</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Wsx                                -&gt;
+          + <A HREF="smthttps.htm#signalbadrequest" TARGET="source">Signal-Bad-Request</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Filter                             -&gt;
+          + <A HREF="smthttps.htm#signalbadrequest" TARGET="source">Signal-Bad-Request</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="havetypeofupdate">Have-Type-Of-Update</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) File                               -&gt; <A HREF="#tryingtoupdate">Trying-To-Update</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+    (--) Not-Found                          -&gt; <A HREF="#tryingtoupdate">Trying-To-Update</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+    (--) Executable                         -&gt;
+          + <A HREF="smthttps.htm#signalurlforbidden" TARGET="source">Signal-Url-Forbidden</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Directory                          -&gt;
+          + <A HREF="smthttps.htm#signalurlforbidden" TARGET="source">Signal-Url-Forbidden</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="tryingtoupdate">Trying-To-Update</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#requestfinished">Request-Finished</A>
+          + <A HREF="smthttps.htm#updateresourcefromrequest" TARGET="source">Update-Resource-From-Request</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#checkifkeepalive" TARGET="source">Check-If-Keep-Alive</A>
+
+<A NAME="aftersendingfile">After-Sending-File</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Finished                           -&gt; <A HREF="#requestfinished">Request-Finished</A>
+          + <A HREF="smthttps.htm#checkifkeepalive" TARGET="source">Check-If-Keep-Alive</A>
+
+<A NAME="tryingtogetdir">Trying-To-Get-Dir</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#havedefault">Have-Default</A>
+          + <A HREF="smthttps.htm#getdefaultwebpage" TARGET="source">Get-Default-Web-Page</A>
+
+<A NAME="havedefault">Have-Default</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) File                               -&gt; <A HREF="#processhttpget">Process-Http-Get</A>
+          + <A HREF="smthttps.htm#geturltype" TARGET="source">Get-Url-Type</A>
+    (--) Not-Found                          -&gt; <A HREF="#aftersendingfile">After-Sending-File</A>
+          + <A HREF="smthttps.htm#makedirectorylisting" TARGET="source">Make-Directory-Listing</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#sendfiletobrowser" TARGET="source">Send-File-To-Browser</A>
+
+<A NAME="havetypeofcgi">Have-Type-Of-Cgi</A>: &lt;<A NAME="client"><Client></A>&gt;!   If /cgi-bin contains non-executable file (e.g. image) we just send it
+
+    (--) File                               -&gt; <A HREF="#tryingtogetfile">Trying-To-Get-File</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+    (--) Executable                         -&gt; <A HREF="#beforerunningcgi">Before-Running-Cgi</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+    (--) Directory                          -&gt; <A HREF="#tryingtogetdir">Trying-To-Get-Dir</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+
+<A NAME="beforerunningcgi">Before-Running-Cgi</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#waitforcgi">Wait-For-Cgi</A>
+          + <A HREF="smthttps.htm#createcgiprocess" TARGET="source">Create-Cgi-Process</A>
+          + <A HREF="smthttps.htm#waitprocessend" TARGET="source">Wait-Process-End</A>
+
+<A NAME="waitforcgi">Wait-For-Cgi</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Timer                              -&gt; <A HREF="#waitforcgi">Wait-For-Cgi</A>
+          + <A HREF="smthttps.htm#waitprocessend" TARGET="source">Wait-Process-End</A>
+    (--) Finished                           -&gt; <A HREF="#aftersendingfile">After-Sending-File</A>
+          + <A HREF="smthttps.htm#closechildprocess" TARGET="source">Close-Child-Process</A>
+          + <A HREF="smthttps.htm#reparseprocessoutput" TARGET="source">Reparse-Process-Output</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#sendfiletobrowser" TARGET="source">Send-File-To-Browser</A>
+    (--) Redirect                           -&gt; <A HREF="#processhttpget">Process-Http-Get</A>
+          + <A HREF="smthttps.htm#geturltype" TARGET="source">Get-Url-Type</A>
+    (--) Error                              -&gt;
+          + <A HREF="smthttps.htm#closechildprocess" TARGET="source">Close-Child-Process</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="havetypeoffilter">Have-Type-Of-Filter</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) File                               -&gt; <A HREF="#tryingtogetfilter">Trying-To-Get-Filter</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+    (--) Executable                         -&gt; <A HREF="#tryingtogetfilter">Trying-To-Get-Filter</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+    (--) Directory                          -&gt; <A HREF="#tryingtogetdir">Trying-To-Get-Dir</A>
+          + <A HREF="smthttps.htm#checkifprotected" TARGET="source">Check-If-Protected</A>
+
+<A NAME="tryingtogetfilter">Trying-To-Get-Filter</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#waitforfilter">Wait-For-Filter</A>
+          + <A HREF="smthttps.htm#createfilterprocess" TARGET="source">Create-Filter-Process</A>
+          + <A HREF="smthttps.htm#waitprocessend" TARGET="source">Wait-Process-End</A>
+
+<A NAME="waitforfilter">Wait-For-Filter</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Timer                              -&gt; <A HREF="#waitforfilter">Wait-For-Filter</A>
+          + <A HREF="smthttps.htm#waitprocessend" TARGET="source">Wait-Process-End</A>
+    (--) Finished                           -&gt; <A HREF="#aftersendingfile">After-Sending-File</A>
+          + <A HREF="smthttps.htm#closechildprocess" TARGET="source">Close-Child-Process</A>
+          + <A HREF="smthttps.htm#reparseprocessoutput" TARGET="source">Reparse-Process-Output</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#sendfiletobrowser" TARGET="source">Send-File-To-Browser</A>
+    (--) Redirect                           -&gt; <A HREF="#processhttpget">Process-Http-Get</A>
+          + <A HREF="smthttps.htm#geturltype" TARGET="source">Get-Url-Type</A>
+    (--) Error                              -&gt;
+          + <A HREF="smthttps.htm#closechildprocess" TARGET="source">Close-Child-Process</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="tryingtogetwsx">Trying-To-Get-Wsx</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#waitforwsx">Wait-For-Wsx</A>
+          + <A HREF="smthttps.htm#passrequesttowsxagent" TARGET="source">Pass-Request-To-Wsx-Agent</A>
+
+<A NAME="waitforwsx">Wait-For-Wsx</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Wsx-Ok                             -&gt; <A HREF="#processwsxdone">Process-Wsx-Done</A>
+          + <A HREF="smthttps.htm#getwsxreturnfields" TARGET="source">Get-Wsx-Return-Fields</A>
+    (--) Wsx-Multi                          -&gt; <A HREF="#processwsxmultipart">Process-Wsx-Multipart</A>
+          + <A HREF="smthttps.htm#getwsxreturnfields" TARGET="source">Get-Wsx-Return-Fields</A>
+    (--) Wsx-Binary                         -&gt; <A HREF="#processwsxdone">Process-Wsx-Done</A>
+          + <A HREF="smthttps.htm#getwsxbinreturnfields" TARGET="source">Get-Wsx-Bin-Return-Fields</A>
+    (--) Wsx-Multibin                       -&gt; <A HREF="#processwsxmultipart">Process-Wsx-Multipart</A>
+          + <A HREF="smthttps.htm#getwsxbinreturnfields" TARGET="source">Get-Wsx-Bin-Return-Fields</A>
+    (--) Wsx-Error                          -&gt;
+          + <A HREF="smthttps.htm#getwsxerrorfields" TARGET="source">Get-Wsx-Error-Fields</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Wsx-Redirect                       -&gt;
+          + <A HREF="smthttps.htm#getwsxredirectfields" TARGET="source">Get-Wsx-Redirect-Fields</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Wsx-Restart                        -&gt; <A HREF="#processwsxrestart">Process-Wsx-Restart</A>
+          + <A HREF="smthttps.htm#getwsxreturnfields" TARGET="source">Get-Wsx-Return-Fields</A>
+    (--) Wsx-Kill                           -&gt; <A HREF="#processwsxkill">Process-Wsx-Kill</A>
+          + <A HREF="smthttps.htm#getwsxreturnfields" TARGET="source">Get-Wsx-Return-Fields</A>
+
+<A NAME="processwsxdone">Process-Wsx-Done</A>:!   Normally the WSX response data is in the event body
+
+    (--) Wsx-Ok                             -&gt; <A HREF="#requestfinished">Request-Finished</A>
+          + <A HREF="smthttps.htm#reparsehttpbody" TARGET="source">Reparse-Http-Body</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#writehttpbody" TARGET="source">Write-Http-Body</A>
+          + <A HREF="smthttps.htm#checkifkeepalive" TARGET="source">Check-If-Keep-Alive</A>
+!   But it might be redirected to a file
+    (--) Wsx-Redirect                       -&gt; <A HREF="#aftersendingfile">After-Sending-File</A>
+          + <A HREF="smthttps.htm#reparseprocessoutput" TARGET="source">Reparse-Process-Output</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#sendfiletobrowser" TARGET="source">Send-File-To-Browser</A>
+
+<A NAME="processwsxmultipart">Process-Wsx-Multipart</A>:
+    (--) Wsx-Ok                             -&gt; <A HREF="#waitforwsx">Wait-For-Wsx</A>
+          + <A HREF="smthttps.htm#reparsehttpbody" TARGET="source">Reparse-Http-Body</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#writehttpbody" TARGET="source">Write-Http-Body</A>
+    (--) Wsx-Redirect                       -&gt; <A HREF="#waitforwsx">Wait-For-Wsx</A>
+          + <A HREF="smthttps.htm#reparseprocessoutput" TARGET="source">Reparse-Process-Output</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#sendfiletobrowser" TARGET="source">Send-File-To-Browser</A>
+
+<A NAME="processwsxrestart">Process-Wsx-Restart</A>:
+    (--) Wsx-Ok                             -&gt;
+          + <A HREF="smthttps.htm#reparsehttpbody" TARGET="source">Reparse-Http-Body</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#writehttpbody" TARGET="source">Write-Http-Body</A>
+          + <A HREF="smthttps.htm#sendmasterthreadrestart" TARGET="source">Send-Master-Thread-Restart</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Wsx-Redirect                       -&gt;
+          + <A HREF="smthttps.htm#reparseprocessoutput" TARGET="source">Reparse-Process-Output</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#sendfiletobrowser" TARGET="source">Send-File-To-Browser</A>
+          + <A HREF="smthttps.htm#sendmasterthreadrestart" TARGET="source">Send-Master-Thread-Restart</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="processwsxkill">Process-Wsx-Kill</A>:
+    (--) Wsx-Ok                             -&gt;
+          + <A HREF="smthttps.htm#reparsehttpbody" TARGET="source">Reparse-Http-Body</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#writehttpbody" TARGET="source">Write-Http-Body</A>
+          + <A HREF="smthttps.htm#sendmasterthreadshutdown" TARGET="source">Send-Master-Thread-Shutdown</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Wsx-Redirect                       -&gt;
+          + <A HREF="smthttps.htm#reparseprocessoutput" TARGET="source">Reparse-Process-Output</A>
+          + <A HREF="smthttps.htm#writehttpheader" TARGET="source">Write-Http-Header</A>
+          + <A HREF="smthttps.htm#sendfiletobrowser" TARGET="source">Send-File-To-Browser</A>
+          + <A HREF="smthttps.htm#sendmasterthreadshutdown" TARGET="source">Send-Master-Thread-Shutdown</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="requestfinished">Request-Finished</A>: &lt;<A NAME="client"><Client></A>&gt;
+    (--) Ok                                 -&gt; <A HREF="#clientinput">Client-Input</A>
+          + <A HREF="smthttps.htm#partialclearhttpcontext" TARGET="source">Partial-Clear-Http-Context</A>
+          + <A HREF="smthttps.htm#readinputfromsocket" TARGET="source">Read-Input-From-Socket</A>
+    (--) Close                              -&gt;
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+
+<A NAME="defaults">Defaults</A>:
+    (--) Exception                          -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smthttps.htm#checksockettype" TARGET="source">Check-Socket-Type</A>
+    (--) Shutdown                           -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smthttps.htm#checksockettype" TARGET="source">Check-Socket-Type</A>
+    (--) Cancel                             -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smthttps.htm#checksockettype" TARGET="source">Check-Socket-Type</A>
+    (--) Fatal                              -&gt;
+          + <A HREF="smthttps.htm#freeallserverresources" TARGET="source">Free-All-Server-Resources</A>
+          + <A HREF="smthttps.htm#shutdowntheapplication" TARGET="source">Shutdown-The-Application</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Sock-Error                         -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smthttps.htm#signalsocketerror" TARGET="source">Signal-Socket-Error</A>
+          + <A HREF="smthttps.htm#checksockettype" TARGET="source">Check-Socket-Type</A>
+    (--) Sock-Closed                        -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smthttps.htm#checksockettype" TARGET="source">Check-Socket-Type</A>
+    (--) Sock-Timeout                       -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smthttps.htm#checksockettype" TARGET="source">Check-Socket-Type</A>
+    (--) Sock-Retry                         -&gt; <A HREF="#endthread">End-Thread</A>
+          + <A HREF="smthttps.htm#checksockettype" TARGET="source">Check-Socket-Type</A>
+    (--) $other                             -&gt;
+          +
+
+<A NAME="endthread">End-Thread</A>:
+    (--) Master                             -&gt;
+          + <A HREF="smthttps.htm#freeallserverresources" TARGET="source">Free-All-Server-Resources</A>
+          + <A HREF="smthttps.htm#shutdowntheapplication" TARGET="source">Shutdown-The-Application</A>
+          + <A HREF="smthttps.htm#preparetoclosemastersocket" TARGET="source">Prepare-To-Close-Master-Socket</A>
+          + <A HREF="smthttps.htm#closemastersocket" TARGET="source">Close-Master-Socket</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+    (--) Client                             -&gt;
+          + <A HREF="smthttps.htm#flushsocketrequests" TARGET="source">Flush-Socket-Requests</A>
+          + <A HREF="smthttps.htm#terminatethethread" TARGET="source">Terminate-The-Thread</A>
+</PRE>
+<HR>
+<P>Generated by <A HREF="http://www.imatix.com">
+Framer 1.0 &#169; 1997 iMatix</A></P>
+</BODY></HTML>

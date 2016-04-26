@@ -1,0 +1,102 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>semaph_create</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt51.htm">&lt;</A>
+ | <A href="smt53.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="semaph_create">&nbsp;</A>
+<H3><A NAME="TOC98"><TT>semaph_create</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+SEMAPH *
+semaph_create (
+    const char *semaph_name,            /*  Name of semaph to create         */
+    int   value                         /*  Initial semaphore value          */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Creates a new semaphore. You must create a semaphore before you
+   can use it. The value argument specifies the number of parties
+   that can access the semaphore (or its related resources) at
+   once. The value must be greated than zero. A 'normal' binary
+   semaphore has an initial value of 1. The semaph name is an
+   arbitrary text, unique within the application. Returns the
+   address of the created SEMAPH block. If there was an error,
+   returns NULL and sets smt_errno to one of these values: <TABLE
+   BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD
+   ALIGN="LEFT">smt_init() was not called, or failed <TR><TD
+   ALIGN="LEFT"><B>SMT OUTOFMEMORY</B>  <TD ALIGN="LEFT">Not
+   enough heap memory left <TR><TD ALIGN="LEFT"><B>SMT
+   SEMAPHEXISTS</B>  <TD ALIGN="LEFT">A semaphore with this name
+   is already declared </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    SYMBOL  *dict_entry;                /*  Dictionary symbol                */
+    SEMAPH  *semaph;                    /*  Agent information block          */
+    char    *full_name;                 /*  Full semaph name                 */
+
+#if (defined (SMT_TRACE))
+    trace ("semaph_create: semaph=%s", semaph_name);
+#endif
+    ASSERT (semaph_name);
+    ASSERT (value &gt; 0);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (NULL);
+      }
+
+    /*  Check that semaphore is not already declared                         */
+    full_name = get_semaph_name (semaph_name);
+    if (sym_lookup_symbol (dict, full_name))
+      {
+        smt_errno = SMT_SEMAPHEXISTS;
+        return (NULL);
+      }
+
+    /*  Now create entry for the semaphore                                   */
+    dict_entry = sym_create_symbol (dict, full_name, NULL);
+    if (dict_entry == NULL)
+      {
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Allocate an SEMAPH block and attach it to the semaphore list         */
+    semaph = (SEMAPH *) node_create (semaphs.prev, sizeof (SEMAPH));
+    if (semaph == NULL)
+      {
+        sym_delete_symbol (dict, dict_entry);
+        smt_errno = SMT_OUTOFMEMORY;
+        return (NULL);
+      }
+
+    /*  Point the dictionary entry to the semaph information block           */
+    dict_entry-&gt; data = semaph;
+
+    /*  Now initialise the semaph - all fields are already set to zero       */
+    semaph-&gt; symbol        = dict_entry;
+    semaph-&gt; name          = mem_strdup (semaph_name);
+    semaph-&gt; threads.left  = &amp;semaph-&gt; threads;
+    semaph-&gt; threads.right = &amp;semaph-&gt; threads;
+    semaph-&gt; value         = value;
+
+    return (semaph);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt51.htm">&lt;</A>
+ | <A href="smt53.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

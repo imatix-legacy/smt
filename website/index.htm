@@ -1,0 +1,248 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>The SMT Kernel</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | &lt;
+ | <A href="smt.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+
+<H1>The SMT Kernel</H1>
+
+<P>The SMT (Simple Multi-Threading kernel) from iMatix is an
+add-on for the <A href="/html/libero/">Libero</A> programming tool that lets you
+write portable high-performance multithreaded programs based on
+Libero's finite-state machine (FSM) design method.
+
+<P>You may want to go straight to the <A href="index.htm#TOC">Table of Contents</A>.
+Also, this documentation is available as <A HREF="smtdoc.htm">a
+single file</A>, suitable for printing.
+
+<P>To download SMT go to the <A href="smt17.htm#download">download page</A>.
+
+<P>You can use the SMT kernel for:
+<UL>
+<LI>Internet programming: where each connection is handled by one
+thread.
+<LI>Real-time programming: where multilevel finite-state machines
+work cooperatively.
+<LI>GUI development: where events are collected from the GUI and
+passed to threads for processing.
+</UL>
+
+<P>The SMT kernel's main features are:
+<UL>
+<LI>100% portability.
+<LI>Strong object orientation.
+<LI>Support for multiple FSM programs within one application.
+<LI>Support for multiple threads within one FSM program.
+<LI>Support for Internet protocols (TCP/IP, UDP/IP).
+<LI>Based on Libero program development method.
+<LI>Standard agents: http, file transfer, authorization,
+logging, console, timing, socket i/o.
+<LI>Unrestricted number of threads, queue sizes, etc.
+</UL>
+
+<P>The SMT kernel currently supports C/C++, and is written in
+portable ANSI C.  It uses the iMatix <A href="/html/sfl/">SFL</A> (standard
+function library) as a technical platform, and the <A href="/html/libero/">Libero</A>
+tool as development method.  Libero, the SFL, and the SMT kernel
+are provided as free software, copyrighted by iMatix.  You may
+freely incorporate the SFL and SMT packages in your applications
+with a minimum of conditions.  Read the <A href="smt19.htm#license">SMT license</A>
+agreement for details.
+
+<P>To use the SMT kernel you should have used Libero and
+understand the concepts involved.  SMT applications are
+essentially written using Libero.  We assume that the reader has
+some familiarity with Libero.
+
+<P>The SMT kernel has been ported to MS-DOS, Windows, UNIX systems
+(Linux, IBM AIX, SunOS, HP/UX) and should be portable to Digital
+VMS.  It comes with complete sources and documentation in HTML.
+It includes XITAMI, a portable multithreaded web server.
+
+<P>Send comments about the SMT kernel, bug reports, and submissions
+to <A HREF="mailto:smt@imatix.com">smt@imatix.com</A>.
+
+<A NAME="TOC">&nbsp;</A>
+<H2>Table of Contents</H2>
+<MENU>
+<LI><A HREF="smt.htm#TOC1">Introduction</A></LI>
+<MENU>
+<LI><A HREF="smt.htm#TOC2">Origins</A></LI>
+<LI><A HREF="smt.htm#TOC3">Classic Multithreading Environments</A></LI>
+<LI><A HREF="smt.htm#TOC4">The History Of Libero Multithreading</A></LI>
+<LI><A HREF="smt.htm#TOC5">Differences with Classic Multithreading</A></LI>
+<LI><A HREF="smt.htm#TOC6">Why Use Multithreading?</A></LI>
+<LI><A HREF="smt.htm#TOC7">What You Should Know</A></LI>
+</MENU>
+<LI><A HREF="smt1.htm#TOC8">The SMT Kernel Architecture</A></LI>
+<MENU>
+<LI><A HREF="smt1.htm#TOC9">Structure Of An SMT Application</A></LI>
+<LI><A HREF="smt1.htm#TOC10">Floating Event Queues</A></LI>
+<LI><A HREF="smt1.htm#TOC11">Routers</A></LI>
+<LI><A HREF="smt1.htm#TOC12">Internal and External Events</A></LI>
+<LI><A HREF="smt1.htm#TOC13">Event Management</A></LI>
+<LI><A HREF="smt1.htm#TOC14">Priorities and Scheduling</A></LI>
+<LI><A HREF="smt1.htm#TOC15">Native Programs Vs. Foreign Programs</A></LI>
+<LI><A HREF="smt1.htm#TOC16">The SMT Kernel Meta-State-Machine</A></LI>
+</MENU>
+<LI><A HREF="smt2.htm#TOC17">Using The SMT Kernel API</A></LI>
+<MENU>
+<LI><A HREF="smt2.htm#TOC18">SMT Kernel Functions</A></LI>
+<LI><A HREF="smt2.htm#TOC19">Initialisation and Termination</A></LI>
+<LI><A HREF="smt2.htm#TOC20">Creating A Thread</A></LI>
+<LI><A HREF="smt2.htm#TOC21">Sending and Receiving Events</A></LI>
+<LI><A HREF="smt2.htm#TOC22">Sending An Initial Event To A Thread</A></LI>
+<LI><A HREF="smt2.htm#TOC23">Event Lifespan and Acknowledgment</A></LI>
+<LI><A HREF="smt2.htm#TOC24">Using Priorities</A></LI>
+</MENU>
+<LI><A HREF="smt3.htm#TOC25">Writing A Native SMT Program</A></LI>
+<MENU>
+<LI><A HREF="smt3.htm#TOC26">Initialising An agent</A></LI>
+<LI><A HREF="smt3.htm#TOC27">The Thread Context Block</A></LI>
+<LI><A HREF="smt3.htm#TOC28">Choosing Event Names</A></LI>
+<LI><A HREF="smt3.htm#TOC29">Mechanics Of Event Delivery</A></LI>
+<LI><A HREF="smt3.htm#TOC30">Waiting For An External Event</A></LI>
+<LI><A HREF="smt3.htm#TOC31">Sending Structured Event Data</A></LI>
+<LI><A HREF="smt3.htm#TOC32">Sending Events Within An Agent</A></LI>
+<LI><A HREF="smt3.htm#TOC33">Ignoring External Events</A></LI>
+<LI><A HREF="smt3.htm#TOC34">Non-Blocking File Access</A></LI>
+<LI><A HREF="smt3.htm#TOC35">Real-time Programming</A></LI>
+<LI><A HREF="smt3.htm#TOC36">Using Semaphores</A></LI>
+<LI><A HREF="smt3.htm#TOC37">Replacing The Standard Agents</A></LI>
+</MENU>
+<LI><A HREF="smt4.htm#TOC38">Using The SMT API In A Foreign Program</A></LI>
+<MENU>
+<LI><A HREF="smt4.htm#TOC39">Writing A Stub Program</A></LI>
+<LI><A HREF="smt4.htm#TOC40">Managing A Floating Event Queue</A></LI>
+<LI><A HREF="smt4.htm#TOC41">Executing The Application</A></LI>
+</MENU>
+<LI><A HREF="smt5.htm#TOC42">Standard SMT Agents</A></LI>
+<MENU>
+<LI><A HREF="smt6.htm#TOC43">The Logging Agent - SMTLOG</A></LI>
+<LI><A HREF="smt7.htm#TOC44">The Operator Console Agent - SMTOPER</A></LI>
+<LI><A HREF="smt8.htm#TOC45">The Timer Agent - SMTTIME</A></LI>
+<LI><A HREF="smt9.htm#TOC46">The Time Slot Agent - SMTSLOT</A></LI>
+<LI><A HREF="smt10.htm#TOC47">The Socket I/O Agent - SMTSOCK</A></LI>
+<LI><A HREF="smt11.htm#TOC48">The Transfer Agent - SMTTRAN</A></LI>
+<LI><A HREF="smt12.htm#TOC49">The TCP ECHO Agent - SMTECHO</A></LI>
+<LI><A HREF="smt13.htm#TOC50">The HTTP Agent - SMTHTTP</A></LI>
+<LI><A HREF="smt14.htm#TOC51">The Network Delay Simulation Agent - SMTSIMU</A></LI>
+</MENU>
+<LI><A HREF="smt15.htm#TOC52">SMT API Quick Reference</A></LI>
+<LI><A HREF="smt16.htm#TOC53">The Unattended Process Monitor (UPM) Tool</A></LI>
+<MENU>
+<LI><A HREF="smt16.htm#TOC54">Overview</A></LI>
+<LI><A HREF="smt16.htm#TOC55">Technical Details</A></LI>
+<LI><A HREF="smt16.htm#TOC56">Using The UPM Tool</A></LI>
+<LI><A HREF="smt16.htm#TOC57">UPM Trouble Shooting</A></LI>
+</MENU>
+<LI><A HREF="smt17.htm#TOC58">Installing The SMT Kernel</A></LI>
+<MENU>
+<LI><A HREF="smt17.htm#TOC59">Availability and Distribution</A></LI>
+<LI><A HREF="smt17.htm#TOC60">Installation for UNIX Systems</A></LI>
+<LI><A HREF="smt17.htm#TOC61">Installation for Digital VMS Systems</A></LI>
+<LI><A HREF="smt17.htm#TOC62">Installation for Windows</A></LI>
+</MENU>
+<LI><A HREF="smt18.htm#TOC63">System-Specific Concerns</A></LI>
+<MENU>
+<LI><A HREF="smt18.htm#TOC64">Windows</A></LI>
+</MENU>
+<LI><A HREF="smt19.htm#TOC65">The SMT License Agreement</A></LI>
+<LI><A HREF="smt20.htm#TOC66">SMT Kernel API functions</A></LI>
+<MENU>
+<LI><A HREF="smt21.htm#TOC67"><TT>smt_init</TT></A></LI>
+<LI><A HREF="smt22.htm#TOC68"><TT>smt_term</TT></A></LI>
+<LI><A HREF="smt23.htm#TOC69"><TT>smt_exec_full</TT></A></LI>
+<LI><A HREF="smt24.htm#TOC70"><TT>smt_exec_step</TT></A></LI>
+<LI><A HREF="smt25.htm#TOC71"><TT>smt_active</TT></A></LI>
+<LI><A HREF="smt26.htm#TOC72"><TT>smt_set_console</TT></A></LI>
+<LI><A HREF="smt27.htm#TOC73"><TT>smt_set_timer</TT></A></LI>
+<LI><A HREF="smt28.htm#TOC74"><TT>smt_atexit</TT></A></LI>
+<LI><A HREF="smt29.htm#TOC75"><TT>smt_shutdown</TT></A></LI>
+<LI><A HREF="smt30.htm#TOC76"><TT>agent_declare</TT></A></LI>
+<LI><A HREF="smt31.htm#TOC77"><TT>agent_lookup</TT></A></LI>
+<LI><A HREF="smt32.htm#TOC78"><TT>agent_destroy</TT></A></LI>
+<LI><A HREF="smt33.htm#TOC79"><TT>method_declare</TT></A></LI>
+<LI><A HREF="smt34.htm#TOC80"><TT>method_lookup</TT></A></LI>
+<LI><A HREF="smt35.htm#TOC81"><TT>method_destroy</TT></A></LI>
+<LI><A HREF="smt36.htm#TOC82"><TT>queue_create</TT></A></LI>
+<LI><A HREF="smt37.htm#TOC83"><TT>queue_lookup</TT></A></LI>
+<LI><A HREF="smt38.htm#TOC84"><TT>queue_destroy</TT></A></LI>
+<LI><A HREF="smt39.htm#TOC85"><TT>queue_deliver</TT></A></LI>
+<LI><A HREF="smt40.htm#TOC86"><TT>queue_flush</TT></A></LI>
+<LI><A HREF="smt41.htm#TOC87"><TT>event_send</TT></A></LI>
+<LI><A HREF="smt42.htm#TOC88"><TT>event_accept</TT></A></LI>
+<LI><A HREF="smt43.htm#TOC89"><TT>event_reject</TT></A></LI>
+<LI><A HREF="smt44.htm#TOC90"><TT>event_expire</TT></A></LI>
+<LI><A HREF="smt45.htm#TOC91"><TT>event_discard</TT></A></LI>
+<LI><A HREF="smt46.htm#TOC92"><TT>event_iterate</TT></A></LI>
+<LI><A HREF="smt47.htm#TOC93"><TT>event_destroy</TT></A></LI>
+<LI><A HREF="smt48.htm#TOC94"><TT>event_wait</TT></A></LI>
+<LI><A HREF="smt49.htm#TOC95"><TT>thread_create</TT></A></LI>
+<LI><A HREF="smt50.htm#TOC96"><TT>thread_lookup</TT></A></LI>
+<LI><A HREF="smt51.htm#TOC97"><TT>thread_destroy</TT></A></LI>
+<LI><A HREF="smt52.htm#TOC98"><TT>semaph_create</TT></A></LI>
+<LI><A HREF="smt53.htm#TOC99"><TT>semaph_lookup</TT></A></LI>
+<LI><A HREF="smt54.htm#TOC100"><TT>semaph_destroy</TT></A></LI>
+<LI><A HREF="smt55.htm#TOC101"><TT>semaph_wait</TT></A></LI>
+<LI><A HREF="smt56.htm#TOC102"><TT>semaph_signal</TT></A></LI>
+<LI><A HREF="smt57.htm#TOC103"><TT>lazy_creat</TT></A></LI>
+<LI><A HREF="smt58.htm#TOC104"><TT>lazy_creat_text</TT></A></LI>
+<LI><A HREF="smt59.htm#TOC105"><TT>lazy_open</TT></A></LI>
+<LI><A HREF="smt60.htm#TOC106"><TT>lazy_open_text</TT></A></LI>
+<LI><A HREF="smt61.htm#TOC107"><TT>lazy_read</TT></A></LI>
+<LI><A HREF="smt62.htm#TOC108"><TT>lazy_write</TT></A></LI>
+<LI><A HREF="smt63.htm#TOC109"><TT>lazy_close</TT></A></LI>
+<LI><A HREF="smt64.htm#TOC110"><TT>senderr</TT></A></LI>
+<LI><A HREF="smt65.htm#TOC111"><TT>sendfmt</TT></A></LI>
+<LI><A HREF="smt66.htm#TOC112"><TT>raise_exception</TT></A></LI>
+<LI><A HREF="smt67.htm#TOC113"><TT>recycle_module</TT></A></LI>
+<LI><A HREF="smt68.htm#TOC114"><TT>smt_set_step</TT></A></LI>
+<LI><A HREF="smt69.htm#TOC115"><TT>smt_crash_report</TT></A></LI>
+</MENU>
+<LI><A HREF="smt70.htm#TOC116">The Standard SMT Agents</A></LI>
+<MENU>
+<LI><A HREF="smt71.htm#TOC117"><TT>smtauth_init</TT></A></LI>
+<LI><A HREF="smt72.htm#TOC118"><TT>smtecho_init</TT></A></LI>
+<LI><A HREF="smt73.htm#TOC119"><TT>smthttp_init</TT></A></LI>
+<LI><A HREF="smt74.htm#TOC120"><TT>smtftpc_init</TT></A></LI>
+<LI><A HREF="smt75.htm#TOC121"><TT>smtftpd_init</TT></A></LI>
+<LI><A HREF="smt76.htm#TOC122"><TT>smtrdns_init</TT></A></LI>
+<LI><A HREF="smt77.htm#TOC123"><TT>smtlog_init</TT></A></LI>
+<LI><A HREF="smt78.htm#TOC124"><TT>smtoper_init</TT></A></LI>
+<LI><A HREF="smt79.htm#TOC125"><TT>smtslot_init</TT></A></LI>
+<LI><A HREF="smt80.htm#TOC126"><TT>smtsock_init</TT></A></LI>
+<LI><A HREF="smt81.htm#TOC127"><TT>smtsock_trace</TT></A></LI>
+<LI><A HREF="smt82.htm#TOC128"><TT>smttime_init</TT></A></LI>
+<LI><A HREF="smt83.htm#TOC129"><TT>smttran_init</TT></A></LI>
+</MENU>
+<LI><A HREF="smt84.htm#TOC130">The Network Delay Simulator</A></LI>
+<MENU>
+<LI><A HREF="smt85.htm#TOC131"><TT>smtsimu_init</TT></A></LI>
+<LI><A HREF="smt86.htm#TOC132"><TT>smtsimu_sock_init</TT></A></LI>
+<LI><A HREF="smt87.htm#TOC133"><TT>smtsimu_smtsock_init</TT></A></LI>
+<LI><A HREF="smt88.htm#TOC134"><TT>smtsimu_smtsock_trace</TT></A></LI>
+<LI><A HREF="smt89.htm#TOC135"><TT>smtsimu_write_UDP</TT></A></LI>
+</MENU>
+<LI><A HREF="smt90.htm#TOC136">The Unattended Process Monitor</A></LI>
+<MENU>
+<LI><A HREF="smt91.htm#TOC137"><TT>smtupmc_init</TT></A></LI>
+</MENU>
+</MENU>
+
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | &lt;
+ | <A href="smt.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

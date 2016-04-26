@@ -1,0 +1,63 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smt_term</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt21.htm">&lt;</A>
+ | <A href="smt23.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smt_term">&nbsp;</A>
+<H3><A NAME="TOC68"><TT>smt_term</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+smt_term (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Shuts-down the SMT. Destroys all agents, methods, queues,
+   events, threads. Returns 0 if there were no errors, otherwise
+   returns -1 and sets smt_errno to one of these values: <TABLE
+   BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD
+   ALIGN="LEFT">smt_init() was not called, or failed <TR><TD
+   ALIGN="LEFT"><B>SMT OUTOFMEMORY</B>  <TD ALIGN="LEFT">Not
+   enough heap memory left </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    EXITFCT *exitfct;                   /*  Exit function address            */
+
+#if (defined (SMT_TRACE))
+    trace ("smt_term");
+#endif
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (-1);
+      }
+
+    FORLIST (exitfct, exitfcts)         /*  Execute all exit functions       */
+        (*exitfct-&gt; handler) ();
+    while (exitfcts.next != &amp;exitfcts)  /*  And free the memory              */
+        node_destroy (exitfcts.next);
+
+    <A href="smt32.htm#agent_destroy">agent destroy</A> (NULL);               /*  Free all agents                  */
+    <A href="smt54.htm#semaph_destroy">semaph destroy</A> (NULL);              /*  Free all semaphores              */
+    sym_delete_table (dict);
+
+    smt_alive = FALSE;                  /*  SMT is now disactivated          */
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt21.htm">&lt;</A>
+ | <A href="smt23.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

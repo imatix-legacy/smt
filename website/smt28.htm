@@ -1,0 +1,73 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smt_atexit</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt27.htm">&lt;</A>
+ | <A href="smt29.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smt_atexit">&nbsp;</A>
+<H3><A NAME="TOC74"><TT>smt_atexit</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+smt_atexit (function handler)
+</PRE>
+<H4>Synopsis</H4>
+<P>Registers a termination function. The function is defined as a
+   void function without arguments. The termination functions are
+   called in the order that they are declared. Multiple instances
+   of the same function are ignored. Returns 0 if okay, -1 if
+   there was an error. In the case of an error, sets smt_errno to
+   one of: <TABLE BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT
+   NOTREADY</B>  <TD ALIGN="LEFT">smt_init() was not called, or
+   failed <TR><TD ALIGN="LEFT"><B>SMT OUTOFMEMORY</B>  <TD
+   ALIGN="LEFT">Not enough heap memory left </TABLE> The kernel
+   executes termination functions before destroying agents and
+   other objects. Thus, termination functions can access the
+   object symbol table ('lookup' functions), but not send or
+   receive events.
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    EXITFCT *exitfct;                   /*  Agent information block          */
+
+#if (defined (SMT_TRACE))
+    trace ("smt_atexit");
+#endif
+    ASSERT (handler);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (-1);
+      }
+
+    /*  Check that exit function is not already defined; if so, ignore it    */
+    FORLIST (exitfct, exitfcts)
+        if (exitfct-&gt; handler == handler)
+            return (0);
+
+    /*  Allocate an EXITFCT block and attach it to the exitfcts list         */
+    exitfct = (EXITFCT *) node_create (exitfcts.prev, sizeof (EXITFCT));
+    if (exitfct == NULL)
+      {
+        smt_errno = SMT_OUTOFMEMORY;
+        return (-1);
+      }
+    exitfct-&gt; handler = handler;
+    return (0);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt27.htm">&lt;</A>
+ | <A href="smt29.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

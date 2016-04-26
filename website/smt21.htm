@@ -1,0 +1,79 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smt_init</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt20.htm">&lt;</A>
+ | <A href="smt22.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smt_init">&nbsp;</A>
+<H3><A NAME="TOC67"><TT>smt_init</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+smt_init (void)
+</PRE>
+<H4>Synopsis</H4>
+<P>Initialises the SMT. Returns 0 if there were no errors. Else
+   returns -1, after seting smt_errno to one of these values:
+   <TABLE BORDER NOWRAP> <TR><TD ALIGN="LEFT"><B>SMT
+   OUTOFMEMORY</B>  <TD ALIGN="LEFT">Not enough heap memory left
+   </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    int feedback = 0;
+#if (defined (SMT_TRACE))
+    trace ("smt_init");
+#endif
+    if (!smt_alive)
+      {
+        dict = sym_create_table ();
+        if (dict == NULL)
+          {
+            smt_errno = SMT_OUTOFMEMORY;
+            feedback = -1;
+          }
+        /*  Initialise list of agents                                        */
+        node_reset (&amp;agents);
+
+        /*  Initialise list of exit functions                                */
+        node_reset (&amp;exitfcts);
+
+        /*  Initialise list of semaphores                                    */
+        node_reset (&amp;semaphs);
+
+        /*  Initialise list of active threads                                */
+        active_threads.left  = &amp;active_threads;
+        active_threads.right = &amp;active_threads;
+        cur_threads = 0;
+
+        /*  Handle interrupt signals                                         */
+        handle_signals ();
+
+        /*  On some systems we get a 'broken pipe' when a connection fails   */
+#       if defined (SIGPIPE)
+        signal (SIGPIPE, SIG_IGN);
+#       endif
+
+        /*  We pass through handle_atexit() before closing-down              */
+        atexit (handle_atexit);
+
+        smt_alive = TRUE;               /*  SMT kernel is now active         */
+      }
+    return (feedback);
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt20.htm">&lt;</A>
+ | <A href="smt22.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

@@ -1,0 +1,182 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>event_send</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt40.htm">&lt;</A>
+ | <A href="smt42.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="event_send">&nbsp;</A>
+<H3><A NAME="TOC87"><TT>event_send</TT></A></H3>
+<PRE>
+#include "smtlib.h"
+int
+event_send (
+    const QID *to_queue,                /*  Queue to receive event, or NULL  */
+    const QID *from_queue,              /*  Queue to receive reply, or NULL  */
+    char   *name,                       /*  Name of event to send            */
+    byte   *body,                       /*  Body of message or NULL          */
+    size_t  body_size,                  /*  Size of body >= 0                */
+    char   *accept_event,               /*  Accept event or NULL             */
+    char   *reject_event,               /*  Reject event or NULL             */
+    char   *expire_event,               /*  Expire event or NULL             */
+    word    timeout                     /*  Timeout in seconds: 0 = none     */
+)
+</PRE>
+<H4>Synopsis</H4>
+<P>Sends an event to an event queue. The event body - if not null
+   or empty - is always copied, crossing memory boundaries. The
+   accept_event, reject_event, and timeout_events are sent back to
+   the sender event queue as required. These events may be
+   specified as null or empty strings. The timeout may be 0 for
+   none, or a value in milliseconds. Returns 0 when successfully
+   completed. The current implementation provides timeouts
+   accurate to a second only. The target queue may be null, in
+   which case the event is ignored, and not sent. This lets you
+   reply to an event without always checking that the reply queue
+   was specified. The event name and reply event names are always
+   stored in uppercase. In case of error, returns -1 and sets
+   smt_errno to one of these values: <TABLE BORDER NOWRAP> <TR><TD
+   ALIGN="LEFT"><B>SMT NOTREADY</B>  <TD ALIGN="LEFT">smt_init()
+   was not called, or failed <TR><TD ALIGN="LEFT"><B>SMT
+   OUTOFMEMORY</B>  <TD ALIGN="LEFT">Not enough heap memory left
+   <TR><TD ALIGN="LEFT"><B>SMT NOSUCHQUEUE</B>  <TD
+   ALIGN="LEFT">The target event queue is not known <TR><TD
+   ALIGN="LEFT"><B>SMT QUEUEISFULL</B>  <TD ALIGN="LEFT">The
+   target event queue is full </TABLE>
+<H4>Source Code - (smtlib.c)</H4>
+<PRE>
+{
+    static QID
+        null_queue = {0, 0};            /*  Indicates a null sender queue    */
+    QUEUE   *queue;                     /*  Queue where we will place event  */
+    EVENT   *event;                     /*  Allocated event block            */
+    size_t  size;                       /*  Total size of event block        */
+    char    *string;                    /*  For storing event strings        */
+
+#if (defined (SMT_TRACE))
+    trace ("event_send: event=%s", name);
+#endif
+    ASSERT (name &amp;&amp; name [0]);
+    if (!smt_alive)                     /*  If SMT API was not correctly     */
+      {                                 /*    initialised, forget it         */
+        smt_errno = SMT_NOTREADY;
+        return (-1);
+      }
+
+    /*  If the called did not specify a target queue, ignore                 */
+    if (to_queue == NULL || to_queue-&gt; ident == 0)
+        return (0);
+
+    if (from_queue == NULL)             /*  If the caller did not specify    */
+      {                                 /*    a reply queue, then we can     */
+        accept_event =                  /*    ignore the reply events in     */
+        reject_event =                  /*    any case.                      */
+        expire_event = NULL;
+        from_queue   = &amp;null_queue;
+      }
+    if ((queue = <A href="smt37.htm#queue_lookup">queue lookup</A> (to_queue)) == NULL)
+      {
+        smt_errno = SMT_NOSUCHQUEUE;
+        return (-1);
+      }
+
+    /*  Check that we're allowed to create a new event                       */
+    if (queue-&gt; max_events &gt; 0
+    &amp;&amp;  queue-&gt; max_events == queue-&gt; cur_events)
+      {
+        smt_errno = SMT_QUEUEISFULL;
+        return (-1);
+      }
+
+    /*  We allocate the event, body, and return events as a single           */
+    /*  block, to reduce access to the heap and make cleaning-up easier.     */
+    size = sizeof (EVENT) + body_size + strlen (name) + 1;
+    if (accept_event)
+        size += strlen (accept_event) + 1;
+    if (reject_event)
+        size += strlen (reject_event) + 1;
+    if (expire_event)
+        size += strlen (expire_event) + 1;
+
+    /*  Allocate an EVENT block and attach it to the event list              */
+    event = (EVENT *) node_create (queue-&gt; events.prev, size);
+    if (event == NULL)
+      {
+        smt_errno = SMT_OUTOFMEMORY;
+        return (-1);
+      }
+
+    event-&gt; priority  = SMT_PRIORITY_NULL;
+    event-&gt; size      = size;           /*  Event is self-contained          */
+    event-&gt; queue     = queue;          /*  Set parent queue address         */
+    event-&gt; sender    = *from_queue;    /*    and sender queue               */
+    event-&gt; body_size = body_size;      /*  Store body size                  */
+    event-&gt; timeout   = timeout? time (NULL) + timeout: 0;
+
+    /*  Store variable-length parts after main event structure               */
+    string = (char *) event + sizeof (EVENT);
+    event-&gt; name = string;
+    strcpy (string, name);
+    strupc (string);
+    string += strlen (string) + 1;
+
+    if (body_size &gt; 0)
+      {
+        /*  Store event body                                                 */
+        event-&gt; body = (byte *) string;
+        memcpy (string, body, body_size);
+        string += body_size;
+      }
+    else
+        event-&gt; body = NULL;
+
+    if (accept_event)
+      {
+        event-&gt; accept_event = string;
+        strcpy (string, accept_event);
+        strupc (string);
+        string += strlen (string) + 1;
+      }
+    else
+        event-&gt; accept_event = NULL;
+
+    if (reject_event)
+      {
+        event-&gt; reject_event = string;
+        strcpy (string, reject_event);
+        strupc (string);
+        string += strlen (string) + 1;
+      }
+    else
+        event-&gt; reject_event = NULL;
+
+    if (expire_event)
+      {
+        event-&gt; expire_event = string;
+        strcpy (string, expire_event);
+        strupc (string);
+        string += strlen (string) + 1;
+      }
+    else
+        event-&gt; expire_event = NULL;
+
+    if (timeout)
+        queue-&gt; timed_events++;         /*  Count event if timed             */
+    queue-&gt; cur_events++;               /*  Count the event                  */
+    return (0);                         /*  No errors                        */
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt40.htm">&lt;</A>
+ | <A href="smt42.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>

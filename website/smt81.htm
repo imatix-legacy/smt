@@ -1,0 +1,37 @@
+<HTML><HEAD><!--Revised: 1 Jan 1999 By: Pieter Hintjens-->
+<TITLE>smtsock_trace</TITLE></HEAD>
+<BODY BACKGROUND="newstone.gif">
+<TABLE WIDTH=100%><TR><TD ALIGN=LEFT>
+ | <A HREF="/index.htm"> iMatix home page</A><BR>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt80.htm">&lt;</A>
+ | <A href="smt82.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT>
+<IMG SRC="smt100.gif" ALT="SMT Logo" WIDTH=80 HEIGHT=60 ALIGN=RIGHT HSPACE=10>
+<FONT SIZE=5><B>SMT</B><BR><FONT SIZE=2>Version 2.81
+</TABLE>
+<HR>
+<A NAME="smtsock_trace">&nbsp;</A>
+<H3><A NAME="TOC127"><TT>smtsock_trace</TT></A></H3>
+<PRE>
+#include "smtdefn.h"
+void smtsock_trace (Bool trace_value)
+</PRE>
+<H4>Synopsis</H4>
+<P>Enables/disables socket tracing: to enable, call with TRUE as
+   argument; to disable call with FALSE as argument. Socket trace
+   data is sent to the console.
+<H4>Source Code - (smtsock.c)</H4>
+<PRE>
+{
+    trace_flag = trace_value;
+}
+</PRE>
+<HR><TABLE WIDTH=100%><TR><TD ALIGN=LEFT WIDTH=60%>
+ | <A href="index.htm">&lt;&lt;</A> | <A href="smt80.htm">&lt;</A>
+ | <A href="smt82.htm">&gt;</A> | <A href="smt91.htm">&gt;&gt;</A>
+<TD ALIGN=RIGHT NOWRAP>
+<A HREF="/index.htm">
+<IMG SRC="im0096c.gif" WIDTH=96 HEIGHT=36 ALT="iMatix" BORDER=0 ALIGN=RIGHT>
+</A>
+<FONT SIZE=2>Copyright &#169; 1996-99 iMatix Corporation</TABLE>
+</BODY></HTML>
