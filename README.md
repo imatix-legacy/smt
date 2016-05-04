@@ -11,10 +11,16 @@ incorporated directly into iMatix products such as the Xitami
 webserver.   It became a key part of the iMatix "base" in the early
 2000s and was not released separately after that.
 
-The license for SMT is in [src/license.txt](src/license.txt).  Briefly
-it allows usage under the GNU General Public License, the Perl Artistic
-License, or with a advertising clause.  See [src/license.txt](src/license.txt)
-for details.
+The original license for SMT is in [src/license.txt](src/license.txt).
+Briefly it allows usage under the GNU General Public License, the
+Perl Artistic License, or with a advertising clause.  See
+[src/license.txt](src/license.txt) for details.
+
+On [2016-04-29 it was also released under the
+MPLv2](https://github.com/imatix-legacy/license) ([license
+text](https://imatix-legacy.github.io/license/MPLv2.html)), so `SMT` can
+be used under either GPLv2, the Perl Artistic license, a license
+with an advertising clause or the MPLv2.
 
 This repository contains the last SMT source, binaries,and documentation
 released in a stand alone version, retrieved from:
